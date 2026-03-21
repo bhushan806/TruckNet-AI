@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius: 0.75rem;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-in-from-bottom: slide-in-from-bottom 0.4s ease-out;
+  --animate-pulse-glow: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes accordion-down {
+    from {
+      height: 0
+    }
+
+    to {
+      height: var(--radix-accordion-content-height)
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height)
+    }
+
+    to {
+      height: 0
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0
+    }
+
+    to {
+      opacity: 1
+    }
+  }
+
+  @keyframes slide-in-from-bottom {
+    from {
+      transform: translateY(20px);
+      opacity: 0
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1
+    }
+  }
+
+  @keyframes pulse-glow {
+
+    0%,
+    100% {
+      opacity: 1;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    50% {
+      opacity: .5;
+      box-shadow: 0 0 20px currentColor;
+    }
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+/* Aurora Glass Theme */
+:root {
+  /* Background: Deep Aurora Gradient handled in body class, but setting base fallback */
+  --background: #0B1121;
+  --foreground: #FFFFFF;
+
+  /* Card: Frosted White Glass */
+  /* bg-white/10 + backdrop-blur-xl */
+  --card: rgba(255, 255, 255, 0.1);
+  --card-foreground: #FFFFFF;
+
+  --popover: rgba(11, 17, 33, 0.95);
+  --popover-foreground: #FFFFFF;
+
+  /* Primary: Cyan to Blue Gradient logic handled in classes, base color for components */
+  --primary: #22d3ee;
+  /* Cyan-400 */
+  --primary-foreground: #000000;
+
+  --secondary: rgba(255, 255, 255, 0.05);
+  --secondary-foreground: #FFFFFF;
+
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: #94A3B8;
+
+  --accent: #22d3ee;
+  --accent-foreground: #000000;
+
+  --destructive: #F97316;
+  --destructive-foreground: #FFFFFF;
+
+  /* Border: Crisp White Border */
+  --border: rgba(255, 255, 255, 0.2);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #22d3ee;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply text-foreground antialiased min-h-screen;
+    /* Deep Aurora Gradient: Slate-900 -> #0B1121 -> Slate-900 */
+    background-image: linear-gradient(to bottom right, #0f172a, #0b1121, #0f172a);
+    font-family: var(--font-inter);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-space);
+  }
+}
+
+@layer utilities {
+
+  /* Frosted White Glass Card */
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl;
+    /* 3D Depth */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .glass-card:hover {
+    @apply -translate-y-1;
+    box-shadow: 0 10px 40px -10px rgba(34, 211, 238, 0.2);
+  }
+
+  /* Neon Gradient Button */
+  .btn-neon {
+    @apply bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-500/30 transition-all hover:scale-105 active:scale-95;
+  }
+
+  /* Frosted Sidebar / Panel */
+  .glass-panel {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+  }
+
+  /* Text Glow */
+  .text-glow {
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+    /* Cyan glow */
+  }
+}

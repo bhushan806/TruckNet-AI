@@ -1,0 +1,73 @@
+services:
+  # Main API Service
+  - type: web
+    name: trucknet-api
+    rootDir: apps/api
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        fromService:
+          name: trucknet-frontend
+          type: web
+          property: url
+      - key: AI_ENGINE_URL
+        fromService:
+          name: trucknet-ai-engine
+          type: web
+          property: url
+
+  # AI Engine Service
+  - type: web
+    name: trucknet-ai-engine
+    rootDir: apps/ai-node-engine
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: MONGODB_URI
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        fromService:
+          name: trucknet-frontend
+          type: web
+          property: url
+
+  # Frontend Service (Next.js)
+  - type: web
+    name: trucknet-frontend
+    rootDir: apps/web
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: trucknet-api
+          type: web
+          property: url
+      - key: NEXT_PUBLIC_AI_ENGINE_URL
+        fromService:
+          name: trucknet-ai-engine
+          type: web
+          property: url

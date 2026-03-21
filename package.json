@@ -1,0 +1,25 @@
+{
+  "name": "trucknet-ai",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build:api": "npm --workspace=apps/api run build",
+    "build:ai": "npm --workspace=apps/ai-node-engine run build",
+    "build:web": "npm --workspace=apps/web run build",
+    "build:all": "npm run build:api && npm run build:ai && npm run build:web",
+    "start:api": "npm --workspace=apps/api run start",
+    "start:ai": "npm --workspace=apps/ai-node-engine run start",
+    "start:web": "npm --workspace=apps/web run start",
+    "dev:api": "npm --workspace=apps/api run dev",
+    "dev:ai": "npm --workspace=apps/ai-node-engine run dev",
+    "dev:web": "npm --workspace=apps/web run dev",
+    "postinstall": "npm run build:all"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  }
+}

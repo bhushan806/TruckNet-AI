@@ -1,0 +1,273 @@
+// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DRIVER
+  OWNER
+  CUSTOMER
+  ADMIN
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  ON_TRIP
+  MAINTENANCE
+}
+
+enum RideStatus {
+  PENDING
+  ASSIGNED
+  ACCEPTED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  email         String    @unique
+  phone         String    @unique
+  password      String
+  name          String
+  role          Role      @default(CUSTOMER)
+  isVerified    Boolean   @default(false)
+  avatar        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Role specific relations
+  driverProfile DriverProfile?
+  ownerProfile  OwnerProfile?
+  
+  // Relations
+  bookings      Ride[]    @relation("CustomerRides")
+  reviews       Review[]
+
+  @@map("users")
+}
+
+model DriverProfile {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String   @unique @db.ObjectId
+  user            User     @relation(fields: [userId], references: [id])
+  licenseNumber   String   @unique
+  experienceYears Int
+  isAvailable     Boolean  @default(true)
+  bio             String?
+  routes          String[] // Array of preferred routes
+  currentLat      Float?
+  currentLng      Float?
+  rating          Float    @default(5.0)
+  totalTrips      Int      @default(0)
+  
+  // Relations
+  // Relations
+  vehicles        Vehicle[] // Driver assigned to vehicles (One-to-many to allow nulls on Vehicle side without unique constraint issues)
+  rides           Ride[]   @relation("DriverRides")
+
+  @@map("driverprofiles")
+}
+
+model OwnerProfile {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @unique @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  companyName String?
+  
+  // Relations
+  vehicles    Vehicle[]
+  loads       Load[]
+
+  @@map("ownerprofiles")
+}
+
+model Load {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  source      String
+  destination String
+  weight      Float     // In tons
+  goodsType   String
+  price       Float
+  status      String    @default("PENDING") // PENDING, ASSIGNED, COMPLETED
+  
+  ownerId     String    @db.ObjectId
+  owner       OwnerProfile @relation(fields: [ownerId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  matches     Match[]
+
+  @@map("loads")
+}
+
+model Vehicle {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  number      String        @unique
+  type        String        // Truck, Van, Container
+  capacity    Float         // In tons
+  status      VehicleStatus @default(AVAILABLE)
+  
+  ownerId     String        @db.ObjectId
+  owner       OwnerProfile  @relation(fields: [ownerId], references: [id])
+  
+  driverId    String?       @db.ObjectId
+  driver      DriverProfile? @relation(fields: [driverId], references: [id])
+  
+  currentLat  Float?
+  currentLng  Float?
+  
+  rides       Ride[]
+  matches     Match[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("vehicles")
+}
+
+model Ride {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  customerId  String     @db.ObjectId
+  customer    User       @relation("CustomerRides", fields: [customerId], references: [id])
+  
+  driverId    String?    @db.ObjectId
+  driver      DriverProfile? @relation("DriverRides", fields: [driverId], references: [id])
+  
+  vehicleId   String?    @db.ObjectId
+  vehicle     Vehicle?   @relation(fields: [vehicleId], references: [id])
+  
+  source      String
+  destination String
+  distance    Float
+  price       Float
+  status      RideStatus @default(PENDING)
+  
+  pickupLat   Float
+  pickupLng   Float
+  dropLat     Float
+  dropLng     Float
+  
+  startTime   DateTime?
+  endTime     DateTime?
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("rides")
+}
+
+model Review {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  rating    Int
+  comment   String?
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Match {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  loadId    String   @db.ObjectId
+  load      Load     @relation(fields: [loadId], references: [id])
+  vehicleId String   @db.ObjectId
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id])
+  
+  score     Float    // 0 to 1 match score
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([loadId, vehicleId])
+}
+
+model Breakdown {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  driverId    String   @db.ObjectId
+  vehicleId   String   @db.ObjectId
+  
+  location    Json     // { lat: number, lng: number, address: string }
+  description String
+  type        String   @default("OTHER") // PUNCTURE, ENGINE, ACCIDENT, FUEL, OTHER
+  images      String[]
+  voiceUrl    String?
+  
+  aiAnalysis  Json?    // { prediction: string, confidence: number, severity: string }
+  status      String   @default("REPORTED") // REPORTED, ASSIGNED, ON_THE_WAY, COMPLETED
+  
+  serviceProviderId String? @db.ObjectId
+  serviceProvider   ServiceProvider? @relation(fields: [serviceProviderId], references: [id])
+  eta         DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ServiceProvider {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  type        String   // MECHANIC, HOSPITAL, FUEL_STATION, TOWING
+  phone       String
+  location    Json     // { lat: number, lng: number, address: string }
+  rating      Float    @default(0)
+  isAvailable Boolean  @default(true)
+  
+  breakdowns  Breakdown[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// --- AI Engine Schema ---
+
+model PredictionLog {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  service       String   // "MATCHING", "PRICING", "ETA"
+  modelVersion  String   @default("v1.0")
+  inputs        Json     // The features sent to the model (distance, weather, etc.)
+  predictedValue Json    // The output from the model (score, price, time)
+  confidence    Float?
+  
+  // Link to business entities if applicable
+  rideId        String?  @db.ObjectId
+  driverId      String?  @db.ObjectId
+  
+  createdAt     DateTime @default(now())
+
+  @@map("ai_prediction_logs")
+}
+
+model TrainingData {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  service       String   // "MATCHING", "PRICING", "ETA"
+  
+  features      Json     // Input vector
+  label         Json     // Actual outcome (e.g., { "accepted": true }, { "actual_time": 45 })
+  
+  sourceId      String?  // Reference to the original event/ride/match
+  
+  createdAt     DateTime @default(now())
+  
+  @@map("ai_training_data")
+}
+
+model ModelRegistry {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  service       String   // "MATCHING", "PRICING"
+  version       String   // "v1.0.1"
+  status        String   // "ACTIVE", "ARCHIVED", "CANDIDATE"
+  metrics       Json?    // { "accuracy": 0.85, "mse": 12.4 }
+  path          String   // Path to .pkl file
+  
+  createdAt     DateTime @default(now())
+  
+  @@map("ai_model_registry")
+}

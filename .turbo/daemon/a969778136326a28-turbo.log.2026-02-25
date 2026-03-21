@@ -1,0 +1,11 @@
+2026-02-25T10:55:08.224660Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo")}
+2026-02-25T10:55:08.225226Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-02-25T10:55:08.257157Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-02-25T10:58:40.628321Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("server\\package.json")}
+2026-02-25T10:58:40.628367Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-02-25T10:58:56.431383Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("server\\server.js")}
+2026-02-25T10:58:56.431416Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-02-25T10:59:02.829520Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("server"), AnchoredSystemPathBuf("server\\.gitignore")}
+2026-02-25T10:59:02.829553Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-02-25T11:00:29.929746Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("package.json"), AnchoredSystemPathBuf("server"), AnchoredSystemPathBuf("server\\.gitignore"), AnchoredSystemPathBuf("server\\server.js"), AnchoredSystemPathBuf(""), AnchoredSystemPathBuf("server\\package.json")}
+2026-02-25T11:00:29.929784Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(All)

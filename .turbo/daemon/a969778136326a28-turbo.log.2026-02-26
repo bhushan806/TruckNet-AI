@@ -1,0 +1,55 @@
+2026-02-26T14:35:49.131294Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo")}
+2026-02-26T14:35:49.131575Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2026-02-26T14:35:49.136355Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-02-26T14:35:52.926335Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:35:52.926374Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:35:53.507030Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:35:53.507066Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:35:53.507225Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:35:58.625622Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\api\\dist")}
+2026-02-26T14:35:58.625651Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-api"), path: AnchoredSystemPathBuf("apps\\api") }}))
+2026-02-26T14:35:59.423674Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:35:59.423702Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:35:59.747441Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:00.521291Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:00.521316Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:00.637679Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:04.826904Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:04.826932Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:04.946265Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:11.417261Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:11.417296Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:11.703475Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:13.119219Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:13.119261Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:13.420388Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:13.420545Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:13.420556Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:13.420620Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:14.325284Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:14.325314Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:14.358722Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:17.228636Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:17.228671Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:18.051581Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:18.051738Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:18.051752Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:18.051805Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:18.122635Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:18.122655Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:18.243918Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:36:37.816604Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:36:37.816634Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:36:40.148608Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:37:05.236698Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:37:05.236727Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:37:05.431686Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:37:05.432042Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:37:05.432052Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:37:05.432141Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:37:05.731603Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:37:05.731635Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:37:06.101064Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
+2026-02-26T14:37:06.101296Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps\\web\\.next")}
+2026-02-26T14:37:06.101315Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("trucknet-web"), path: AnchoredSystemPathBuf("apps\\web") }}))
+2026-02-26T14:37:06.101426Z  WARN turborepo_lib::package_changes_watcher: hashes are the same, no need to rerun
