@@ -9,7 +9,7 @@ import { logger } from './utils/logger';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.AI_ENGINE_PORT || process.env.PORT || 5001;
 
 // Security and Middleware
 app.use(helmet());
