@@ -13,7 +13,7 @@
     "build:web": "npm --workspace=apps/web run build",
     "build:api": "npm --workspace=apps/backend/api run build",
     "build:ai": "npm --workspace=apps/backend/ai-node-engine run build",
-    "build:all": "npm run build:api && npm run build:ai && npm run build:web",
+    "build:all": "echo 'Skipping monorepo build - Vercel builds only frontend'",
     "start:api": "npm --workspace=apps/backend/api run start",
     "start:ai": "npm --workspace=apps/backend/ai-node-engine run start",
     "start:web": "npm --workspace=apps/web run start",
