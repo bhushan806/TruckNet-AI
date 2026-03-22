@@ -20,6 +20,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// ✅ HEALTH ENDPOINT (must be here)
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'TruckNet AI Engine',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // DB Connection (with pooling)
 if (process.env.MONGODB_URI) {
     mongoose.connect(process.env.MONGODB_URI, {
@@ -44,14 +53,7 @@ if (!process.env.JWT_SECRET) {
     process.exit(1);
 }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    service: 'TruckNet AI Engine',
-    timestamp: new Date().toISOString()
-  });
-});
+
 
 // Import Routes
 import dostRoutes from './routes/dost.routes';
