@@ -7,6 +7,8 @@
     "apps/*"
   ],
   "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
     "build:api": "npm --workspace=apps/api run build",
     "build:ai": "npm --workspace=apps/ai-node-engine run build",
     "build:web": "npm --workspace=apps/web run build",
