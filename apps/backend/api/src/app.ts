@@ -25,6 +25,8 @@ import assistantRoutes from './routes/assistant.routes';
 import requestRoutes from './routes/request.routes';
 import financeRoutes from './routes/finance.routes';
 import documentRoutes from './routes/document.routes';
+import dostRoutes from './routes/dost.routes';
+import predictiveRoutes from './routes/predictive.routes';
 // AI routes have been moved to ai-node-engine microservice
 
 import { connectMongoose } from './config/mongoose';
@@ -60,15 +62,12 @@ app.use(sanitizeResponse);        // Strip sensitive fields from responses
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
 // ── Health Check ──
-app.get('/api/health', (_req, res) => {
-    res.status(200).json({
-        status: 'success',
-        message: 'TruckNet API is running',
-        data: {
-            uptime: process.uptime(),
-            timestamp: new Date().toISOString(),
-            environment: env.NODE_ENV,
-        },
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'trucknet-api',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
     });
 });
 
@@ -92,12 +91,14 @@ app.use('/api/rides', rideRoutes);
 app.use('/api/loads', loadRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/roadside', roadsideRoutes);
-app.use('/api/driver', driverRoutes);
+app.use('/api/drivers', driverRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/dost', dostRoutes);
+app.use('/api/predictive', predictiveRoutes);
 // AI routes proxy/moved to ai-node-engine
 
 // ── 404 Handler ──

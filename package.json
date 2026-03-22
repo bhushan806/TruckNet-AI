@@ -11,16 +11,11 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "build:web": "npm --workspace=apps/web run build",
-    "build:api": "npm --workspace=apps/backend/api run build",
-    "build:ai": "npm --workspace=apps/backend/ai-node-engine run build",
-    "build:all": "echo 'Skipping monorepo build - Vercel builds only frontend'",
-    "start:api": "npm --workspace=apps/backend/api run start",
-    "start:ai": "npm --workspace=apps/backend/ai-node-engine run start",
-    "start:web": "npm --workspace=apps/web run start",
-    "dev:api": "npm --workspace=apps/backend/api run dev",
-    "dev:ai": "npm --workspace=apps/backend/ai-node-engine run dev",
-    "dev:web": "npm --workspace=apps/web run dev",
-    "postinstall": "npm run build:all"
+    "build:api": "cd apps/backend/api && npm install && npm run build",
+    "build:ai": "cd apps/backend/ai-node-engine && npm install && npm run build",
+    "build:all": "npm run build:api && npm run build:ai",
+    "start:api": "cd apps/backend/api && node dist/app.js",
+    "start:ai": "cd apps/backend/ai-node-engine && node dist/server.js"
   },
   "engines": {
     "node": ">=20.0.0 <25.0.0",

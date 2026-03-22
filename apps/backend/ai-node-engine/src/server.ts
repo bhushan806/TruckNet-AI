@@ -44,15 +44,13 @@ if (!process.env.JWT_SECRET) {
     process.exit(1);
 }
 
-// Health check
-app.get('/health/complete', async (req, res) => {
-    res.json({
-        status: 'ok',
-        service: 'trucknet-ai-engine',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        database: mongoose.connection.readyState === 1 ? 'up' : 'down',
-    });
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'TruckNet AI Engine',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Import Routes
@@ -61,7 +59,7 @@ import predictiveRoutes from './routes/predictive.routes';
 
 // Mount Routes
 app.use('/api/dost', dostRoutes);
-app.use('/api/ai/predictive', predictiveRoutes);
+app.use('/api/predictive', predictiveRoutes);
 
 // 404 handler
 app.use((req, res) => {
