@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Star, MapPin, Navigation, Clock, Shield, DollarSign, Award, Truck, Package } from 'lucide-react';
 import MapComponent from '@/components/map/Map';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 
 export default function DriverDashboard() {

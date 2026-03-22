@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Phone, Eye, Plus, ArrowLeft, MapPin, Calendar, Briefcase } from 'lucide-react';
 import Link from 'next/link';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 

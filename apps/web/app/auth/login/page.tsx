@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 import { Truck } from 'lucide-react';
 
 export default function LoginPage() {

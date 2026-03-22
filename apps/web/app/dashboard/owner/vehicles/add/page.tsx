@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Truck, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 export default function AddVehiclePage() {
     const router = useRouter();

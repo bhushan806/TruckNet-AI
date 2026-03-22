@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus } from 'lucide-react';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 export function PostLoadDialog({ onLoadPosted }: { onLoadPosted: () => void }) {
     const [open, setOpen] = useState(false);
