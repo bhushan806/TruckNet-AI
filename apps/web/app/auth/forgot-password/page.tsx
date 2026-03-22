@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
                             <div className="p-4 bg-muted rounded-md text-xs break-all">
                                 <p className="font-semibold mb-1">Prototype Only (Click to reset):</p>
                                 <Link href={resetLink} className="text-primary hover:underline">
-                                    {window.location.origin}{resetLink}
+                                    {typeof window !== 'undefined' ? window.location.origin : ''}{resetLink}
                                 </Link>
                             </div>
                             <Button asChild className="w-full">
