@@ -4,7 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { AuthProvider } from '@/lib/auth-context';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
-import AIAssistant from "@/components/ai/AIAssistant";
+import ClientAIAssistant from '@/components/ai/ClientAIAssistant';
 import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
@@ -37,7 +37,7 @@ export default function RootLayout({
               </div>
             </footer>
           </div>
-          <AIAssistant />
+          <ClientAIAssistant />
           <Toaster />
         </AuthProvider>
       </body>

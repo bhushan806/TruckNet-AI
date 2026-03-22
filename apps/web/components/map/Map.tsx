@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import 'leaflet/dist/leaflet.css';
 
 // Dynamic import to avoid SSR issues with Leaflet
 const MapContainer = dynamic(
@@ -36,6 +35,15 @@ export default function MapComponent({
     useEffect(() => {
         setIsMounted(true);
         (async () => {
+            // Inject Leaflet CSS via link tag (client-only) to avoid SSR bundle inclusion
+            if (!document.getElementById('leaflet-css')) {
+                const link = document.createElement('link');
+                link.id = 'leaflet-css';
+                link.rel = 'stylesheet';
+                link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+                document.head.appendChild(link);
+            }
+
             const L = (await import('leaflet')).default;
             // Fix Leaflet icon issue
             // @ts-ignore
