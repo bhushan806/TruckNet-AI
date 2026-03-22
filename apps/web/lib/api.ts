@@ -64,3 +64,4 @@ aiApi.interceptors.request.use((config) => {
 });
 
 export { api, aiApi };
+export default api;
