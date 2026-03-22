@@ -19,7 +19,7 @@
     "postinstall": "npm run build:all"
   },
   "engines": {
-    "node": "20.x",
+    "node": ">=20.0.0 <25.0.0",
     "npm": "10.x"
   }
 }
