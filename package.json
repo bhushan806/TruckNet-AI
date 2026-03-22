@@ -4,20 +4,21 @@
   "packageManager": "npm@10.8.0",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "apps/backend/*"
   ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "build:api": "npm --workspace=apps/api run build",
-    "build:ai": "npm --workspace=apps/ai-node-engine run build",
     "build:web": "npm --workspace=apps/web run build",
+    "build:api": "npm --workspace=apps/backend/api run build",
+    "build:ai": "npm --workspace=apps/backend/ai-node-engine run build",
     "build:all": "npm run build:api && npm run build:ai && npm run build:web",
-    "start:api": "npm --workspace=apps/api run start",
-    "start:ai": "npm --workspace=apps/ai-node-engine run start",
+    "start:api": "npm --workspace=apps/backend/api run start",
+    "start:ai": "npm --workspace=apps/backend/ai-node-engine run start",
     "start:web": "npm --workspace=apps/web run start",
-    "dev:api": "npm --workspace=apps/api run dev",
-    "dev:ai": "npm --workspace=apps/ai-node-engine run dev",
+    "dev:api": "npm --workspace=apps/backend/api run dev",
+    "dev:ai": "npm --workspace=apps/backend/ai-node-engine run dev",
     "dev:web": "npm --workspace=apps/web run dev",
     "postinstall": "npm run build:all"
   },
