@@ -1,0 +1,44 @@
+﻿node : C:\Users\pbhus\Desktop\Hacka
+thon_Code\apps\web\node_modules\.bi
+n\next:2
+At line:1 char:14
++ cd apps\web; node 
+node_modules\.bin\next build 2>&1 
+| Out-File -Encod ...
++              ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotS 
+   pecified: (C:\Users\pbhus\...l  
+  es\.bin\next:2:String) [], Rem   
+ oteException
+    + FullyQualifiedErrorId : Nati 
+   veCommandError
+ 
+basedir=$(dirname "$(echo "$0" | 
+sed -e 's,\\,/,g')")
+          ^^^^^^^
+
+SyntaxError: missing ) after 
+argument list
+    at wrapSafe (node:internal/modu
+les/cjs/loader:1662:18)
+    at Module._compile (node:intern
+al/modules/cjs/loader:1704:20)
+    at Object..js (node:internal/mo
+dules/cjs/loader:1895:10)
+    at Module.load (node:internal/m
+odules/cjs/loader:1465:32)
+    at Function._load (node:interna
+l/modules/cjs/loader:1282:12)
+    at TracingChannel.traceSync 
+(node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:interna
+l/modules/cjs/loader:235:24)
+    at 
+Function.executeUserEntryPoint [as 
+runMain] (node:internal/modules/run
+_main:171:5)
+    at node:internal/main/run_main_
+module:36:49
+
+Node.js v22.17.1
