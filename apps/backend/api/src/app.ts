@@ -49,7 +49,8 @@ app.use(helmet());
 // SECURITY: CORS restricted to configured frontend origin (env CORS_ORIGIN)
 app.use(cors({
     origin: env.CORS_ORIGIN,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 }));
 // Use 'combined' format in production for audit logs, 'dev' for readability locally

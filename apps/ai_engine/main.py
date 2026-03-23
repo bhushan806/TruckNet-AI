@@ -1,11 +1,27 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import math
 import random
+import os
 from datetime import datetime
 
 app = FastAPI(title="TruckNet AI Engine", version="1.0.0")
+
+# CORS — allow frontend origin (configurable via env var)
+_cors_origins = os.environ.get(
+    "CORS_ORIGIN",
+    "https://trucknet-frontend.onrender.com"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # --- Data Models ---
 
