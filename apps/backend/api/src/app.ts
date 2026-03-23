@@ -111,7 +111,7 @@ app.all('*', (req, _res, next) => {
 app.use(errorHandler);
 
 // ── Start Server ──
-const PORT = process.env.API_PORT || env.PORT || 5000;
+const PORT = env.PORT;
 httpServer.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`, { environment: env.NODE_ENV });
 

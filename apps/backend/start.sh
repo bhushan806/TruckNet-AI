@@ -1,4 +1,4 @@
 #!/bin/bash
-cd /opt/render/project/src/apps/backend/api && API_PORT=5000 npm run start &
-cd /opt/render/project/src/apps/backend/ai-node-engine && AI_ENGINE_PORT=5001 npm run start &
-wait
+# Start the API server on Render's $PORT
+# NOTE: AI Node Engine should be deployed as a SEPARATE Render service
+cd /opt/render/project/src/apps/backend/api && npm run start
