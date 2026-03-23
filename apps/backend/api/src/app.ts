@@ -93,6 +93,7 @@ app.use('/api/loads', loadRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/roadside', roadsideRoutes);
 app.use('/api/drivers', driverRoutes);
+app.use('/api/driver', driverRoutes);  // singular alias — frontend uses /api/driver/profile
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/requests', requestRoutes);
