@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -119,7 +119,11 @@ class InsightsResponse(BaseModel):
 # --- Endpoints ---
 
 @app.get("/")
-def health_check():
+def root_check():
+    return {"status": "healthy", "service": "TruckNet AI Engine"}
+
+@app.get("/health")
+async def health():
     return {"status": "healthy", "service": "TruckNet AI Engine"}
 
 @app.post("/get-insights", response_model=InsightsResponse)
@@ -346,6 +350,22 @@ def dynamic_pricing(req: PriceRequest):
         surge_multiplier=round(surge, 2),
         breakdown={"rate": base_rate_per_km, "dist": req.distance_km}
     )
+
+# --- Dost Chat Routes (placeholder for frontend compatibility) ---
+
+@app.get("/dost/history")
+async def get_dost_history():
+    return {"status": "success", "history": []}
+
+@app.post("/dost/chat")
+async def dost_chat(request: Request):
+    body = await request.json()
+    message = body.get("message", "")
+    return {
+        "status": "success",
+        "reply": "This is a placeholder response from TruckNet AI Engine.",
+        "message_received": message
+    }
 
 if __name__ == "__main__":
     import uvicorn
