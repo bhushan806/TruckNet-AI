@@ -3,7 +3,7 @@
 // Handles role-based context, language detection, module routing, and AI chat.
 // Enhanced with structured AI data injection (pricing, risk, load sharing, insights).
 
-import { callGrokAPI } from './aiService';
+import { getResponse } from './aiService';
 import { logger } from '../utils/logger';
 import { RideModel } from '../models/mongoose/Ride';
 import { DriverProfileModel } from '../models/mongoose/DriverProfile';
@@ -482,7 +482,7 @@ export async function chat(params: DostChatParams): Promise<DostResponse> {
 
     // 4. Run LLM + structured data + predictive intelligence in parallel (non-blocking)
     const [aiReply, structuredData, predictiveIntelligence] = await Promise.all([
-        callGrokAPI(messages),
+        getResponse(messages),
         userId === 'anonymous' ? Promise.resolve(undefined) : fetchStructuredData(module, role, message),
         userId === 'anonymous' ? Promise.resolve(undefined) : fetchPredictiveData(module, message),
     ]);
