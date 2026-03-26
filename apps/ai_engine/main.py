@@ -12,7 +12,7 @@ app = FastAPI(title="TruckNet AI Engine", version="1.0.0")
 # CORS — allow frontend origin (configurable via env var)
 _cors_origins = os.environ.get(
     "CORS_ORIGIN",
-    "https://trucknet-frontend.onrender.com"
+    "https://rucknet-frontend.vercel.app,https://trucknet-frontend.onrender.com"
 ).split(",")
 
 app.add_middleware(
