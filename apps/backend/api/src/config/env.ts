@@ -10,7 +10,7 @@ dotenv.config();
 const isProd = process.env.NODE_ENV === 'production';
 
 const envSchema = z.object({
-    PORT: z.string().default('5000'),
+    PORT: z.string().default('10000'),
     DATABASE_URL: z.string(),
     JWT_SECRET: z.string(),
     JWT_REFRESH_SECRET: z.string(),
