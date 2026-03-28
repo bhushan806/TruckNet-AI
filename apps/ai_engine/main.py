@@ -373,30 +373,25 @@ async def dost_chat(request: Request):
                 "message_received": message
             }
 
-        prompt = f"""<s>[INST] You are TruckNet Dost, an AI logistics assistant for Indian truck drivers and fleet owners.
-
-RULES:
-- Speak in Hinglish (Hindi + English mix naturally)
-- Be friendly, helpful, and concise (2-3 sentences max)
-- Help with: load rates, routes, vehicle matching, delay predictions, roadside assistance
-- Use emojis occasionally 🚛📦🛣️
-
-User: {message} [/INST]"""
-
         headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
         payload = {
-            "inputs": prompt,
-            "parameters": {
-                "max_new_tokens": 500,
-                "temperature": 0.7,
-                "top_p": 0.95,
-                "do_sample": True,
-                "return_full_text": False
-            }
+            "model": "mistralai/Mistral-7B-Instruct-v0.1",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are TruckNet Dost, an AI logistics assistant for Indian truck drivers and fleet owners. Speak in Hinglish (Hindi + English mix). Be friendly, helpful, and concise (2-3 sentences max). Help with: load rates, routes, vehicle matching, delay predictions, roadside assistance. Use emojis occasionally."
+                },
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ],
+            "max_tokens": 200,
+            "temperature": 0.7
         }
 
         hf_response = requests.post(
-            "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1",
+            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.1/v1/chat/completions",
             headers=headers,
             json=payload,
             timeout=30
@@ -404,7 +399,7 @@ User: {message} [/INST]"""
 
         if hf_response.status_code == 200:
             result = hf_response.json()
-            ai_reply = result[0]["generated_text"].strip()
+            ai_reply = result["choices"][0]["message"]["content"].strip()
             return {
                 "status": "success",
                 "reply": ai_reply,
