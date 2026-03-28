@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { Truck } from 'lucide-react';
 
 export default function RegisterPage() {

@@ -51,7 +51,7 @@ app.use(cors({
     origin: env.CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    credentials: false,
 }));
 // Use 'combined' format in production for audit logs, 'dev' for readability locally
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));

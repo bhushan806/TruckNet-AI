@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Truck } from 'lucide-react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { AddVehicleDialog } from '@/components/dashboard/AddVehicleDialog';
 
 export default function VehicleManagementPage() {

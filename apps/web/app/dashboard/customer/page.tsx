@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MapComponent from '@/components/map/Map';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { Package, MapPin, Clock, Truck } from 'lucide-react';
 
 export default function CustomerDashboard() {

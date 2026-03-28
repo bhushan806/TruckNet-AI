@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { Truck } from 'lucide-react';
 
 export default function LoginPage() {
@@ -29,7 +29,17 @@ export default function LoginPage() {
 
         try {
             const res = await api.post('/auth/login', formData);
-            const { user, accessToken } = res.data.data;
+            const responseData = res.data.data;
+            const { user } = responseData;
+            // Backend returns accessToken (or token as alias)
+            const accessToken = responseData.accessToken || responseData.token;
+
+            if (!accessToken) throw new Error('No token received from server');
+
+            // Save tokens to localStorage
+            if (responseData.refreshToken) {
+                localStorage.setItem('refreshToken', responseData.refreshToken);
+            }
 
             login(accessToken, user);
 

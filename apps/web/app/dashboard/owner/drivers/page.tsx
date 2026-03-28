@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { User, Truck, FileText, Shield, Phone, Mail, Star } from 'lucide-react';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 
 export default function ManageDriversPage() {
     const [drivers, setDrivers] = useState<any[]>([]);

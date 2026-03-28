@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import { CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Truck, Activity, Wrench, Bell, Sparkles, Users, Box, Briefcase, FileText, ShieldCheck, ArrowUpRight, Map, Plus } from 'lucide-react';
 import MapComponent from '@/components/map/Map';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import Link from 'next/link';
 import { io } from 'socket.io-client';
 import { toast } from 'sonner';
@@ -49,8 +49,9 @@ export default function OwnerDashboard() {
         fetchVehicles();
 
         // Socket.io connection — derive base URL from API URL env var
-        const socketUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
-        const socket = io(socketUrl);
+        const socket = io(process.env.NEXT_PUBLIC_API_URL || '', {
+            auth: { token: localStorage.getItem('token') }
+        });
 
         socket.on('connect', () => {
             console.log('Connected to socket server');

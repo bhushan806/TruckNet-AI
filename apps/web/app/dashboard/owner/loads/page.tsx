@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, MapPin, Calendar, Truck, User, Package, Weight } from 'lucide-react';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 
 export default function OwnerLoadsPage() {
     const [openLoads, setOpenLoads] = useState<any[]>([]);

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MapComponent from '@/components/map/Map';
 
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 
 export default function FindVehiclePage() {
     const [trackingId, setTrackingId] = useState('');

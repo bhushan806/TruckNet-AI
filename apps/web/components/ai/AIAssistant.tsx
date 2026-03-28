@@ -8,7 +8,7 @@ import {
     Package, Truck, AlertTriangle, MapPin, DollarSign, LifeBuoy,
     Zap, ArrowRight, TrendingUp
 } from 'lucide-react';
-import { api, aiApi } from '@/lib/api';
+import api, { aiApi } from '@/lib/api';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
@@ -254,7 +254,7 @@ export default function AIAssistant() {
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const router = useRouter();
 
-    const pageContext = getPageContext(pathname, !!user);
+    const pageContext = getPageContext(pathname || '', !!user);
     const isPublicMode = !user;
 
     // Cycle thinking messages while loading

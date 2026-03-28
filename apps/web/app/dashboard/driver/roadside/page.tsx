@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
+import api from '@/lib/api';
 import LocationPickerMap from '@/components/map/LocationPickerMap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
