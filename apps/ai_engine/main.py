@@ -363,13 +363,12 @@ async def dost_chat(request: Request):
     try:
         body = await request.json()
         message = body.get("message", "")
-
         HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
-
+        
         if not HF_API_TOKEN:
             return {
                 "status": "error",
-                "reply": "AI service not configured. Please add HF_API_TOKEN to environment variables.",
+                "reply": "AI service not configured.",
                 "message_received": message
             }
 
@@ -379,41 +378,34 @@ async def dost_chat(request: Request):
         }
         
         payload = {
-            "model": "mistralai/Mistral-7B-Instruct-v0.3",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are TruckNet Dost, an AI logistics assistant for Indian truck drivers and fleet owners. Speak in Hinglish (Hindi + English mix). Be friendly, helpful, and concise (2-3 sentences max). Help with: load rates, routes, vehicle matching, delay predictions, roadside assistance. Use emojis occasionally."
-                },
-                {
-                    "role": "user",
-                    "content": message
-                }
-            ],
-            "max_tokens": 200,
-            "temperature": 0.7
+            "inputs": f"You are TruckNet Dost, a helpful logistics assistant for Indian truckers. Reply in Hinglish. User: {message}\nAssistant:",
+            "parameters": {
+                "max_new_tokens": 150,
+                "temperature": 0.7,
+                "return_full_text": False
+            }
         }
-
+        
         hf_response = requests.post(
-            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions",
+            "https://api-inference.huggingface.co/models/google/flan-t5-large",
             headers=headers,
             json=payload,
             timeout=30
         )
         
-        if hf_response.status_code != 200:
-            print(f"Mistral-7B-Instruct-v0.3 failed ({hf_response.status_code}). Attempting Zephyr fallback...")
-            payload["model"] = "HuggingFaceH4/zephyr-7b-beta"
-            hf_response = requests.post(
-                "https://router.huggingface.co/hf-inference/models/HuggingFaceH4/zephyr-7b-beta/v1/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=30
-            )
-
+        print(f"HuggingFace status: {hf_response.status_code}")
+        print(f"HuggingFace response: {hf_response.text[:200]}")
+        
         if hf_response.status_code == 200:
             result = hf_response.json()
-            ai_reply = result["choices"][0]["message"]["content"].strip()
+            if isinstance(result, list):
+                ai_reply = result[0].get("generated_text", "").strip()
+            else:
+                ai_reply = str(result)
+            
+            if not ai_reply:
+                ai_reply = "Namaste! Main TruckNet Dost hoon. Aapki kya help kar sakta hoon? 🚛"
+                
             return {
                 "status": "success",
                 "reply": ai_reply,
@@ -422,7 +414,7 @@ async def dost_chat(request: Request):
         else:
             print(f"HuggingFace error {hf_response.status_code}: {hf_response.text}")
             return {
-                "status": "error",
+                "status": "error", 
                 "reply": "AI service temporarily unavailable. Thodi der mein try karo. 🚛",
                 "message_received": message
             }
