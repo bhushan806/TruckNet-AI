@@ -373,9 +373,13 @@ async def dost_chat(request: Request):
                 "message_received": message
             }
 
-        headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+        headers = {
+            "Authorization": f"Bearer {HF_API_TOKEN}",
+            "Content-Type": "application/json"
+        }
+        
         payload = {
-            "model": "mistralai/Mistral-7B-Instruct-v0.1",
+            "model": "mistralai/Mistral-7B-Instruct-v0.3",
             "messages": [
                 {
                     "role": "system",
@@ -391,11 +395,21 @@ async def dost_chat(request: Request):
         }
 
         hf_response = requests.post(
-            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.1/v1/chat/completions",
+            "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions",
             headers=headers,
             json=payload,
             timeout=30
         )
+        
+        if hf_response.status_code != 200:
+            print(f"Mistral-7B-Instruct-v0.3 failed ({hf_response.status_code}). Attempting Zephyr fallback...")
+            payload["model"] = "HuggingFaceH4/zephyr-7b-beta"
+            hf_response = requests.post(
+                "https://router.huggingface.co/hf-inference/models/HuggingFaceH4/zephyr-7b-beta/v1/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=30
+            )
 
         if hf_response.status_code == 200:
             result = hf_response.json()
