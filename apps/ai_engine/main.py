@@ -372,40 +372,33 @@ async def dost_chat(request: Request):
                 "message_received": message
             }
 
-        headers = {
-            "Authorization": f"Bearer {HF_API_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "inputs": f"You are TruckNet Dost, a helpful logistics assistant for Indian truckers. Reply in Hinglish. User: {message}\nAssistant:",
-            "parameters": {
-                "max_new_tokens": 150,
-                "temperature": 0.7,
-                "return_full_text": False
-            }
-        }
-        
         hf_response = requests.post(
-            "https://api-inference.huggingface.co/models/google/flan-t5-large",
-            headers=headers,
-            json=payload,
+            "https://router.huggingface.co/hf-inference/models/google/flan-t5-large/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {HF_API_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "google/flan-t5-large",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": f"You are TruckNet Dost, a helpful logistics assistant for Indian truckers. Reply in Hinglish (Hindi+English mix) in 2-3 sentences. User message: {message}"
+                    }
+                ],
+                "max_tokens": 150
+            },
             timeout=30
         )
-        
+
         print(f"HuggingFace status: {hf_response.status_code}")
-        print(f"HuggingFace response: {hf_response.text[:200]}")
-        
+        print(f"HuggingFace response: {hf_response.text[:300]}")
+
         if hf_response.status_code == 200:
             result = hf_response.json()
-            if isinstance(result, list):
-                ai_reply = result[0].get("generated_text", "").strip()
-            else:
-                ai_reply = str(result)
-            
+            ai_reply = result["choices"][0]["message"]["content"].strip()
             if not ai_reply:
                 ai_reply = "Namaste! Main TruckNet Dost hoon. Aapki kya help kar sakta hoon? 🚛"
-                
             return {
                 "status": "success",
                 "reply": ai_reply,
@@ -414,7 +407,7 @@ async def dost_chat(request: Request):
         else:
             print(f"HuggingFace error {hf_response.status_code}: {hf_response.text}")
             return {
-                "status": "error", 
+                "status": "error",
                 "reply": "AI service temporarily unavailable. Thodi der mein try karo. 🚛",
                 "message_received": message
             }
