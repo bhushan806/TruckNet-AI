@@ -47,10 +47,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(userData);
     };
 
-    const logout = () => {
+    const logout = async () => {
         const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
         if (currentUser?.id) {
             localStorage.removeItem(`chat_${currentUser.id}`);
+            try {
+                const { aiApi } = await import('./api');
+                await aiApi.delete('/dost/history');
+            } catch (error) {
+                console.error('Failed to clear chat history on server', error);
+            }
         }
         localStorage.removeItem('token');
         localStorage.removeItem('user');

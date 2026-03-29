@@ -29,52 +29,18 @@ interface Message {
 
 // Role-based welcome messages
 function getWelcomeMessage(role: string | undefined): string {
-    switch (role) {
-        case 'CUSTOMER': return 'Namaste! 🚛 Aaj kahan bhejni hai maal?';
-        case 'DRIVER': return 'Jai ho bhai! 🚛 Aaj kahan jaana hai?';
-        case 'OWNER': return 'Namaste! 🚛 Aaj fleet ka kya haal hai?';
-        default: return 'Namaste! Main TruckNet Dost hoon 🚛';
-    }
+    return 'Namaste! Main TruckNet Dost hoon 🚛\nAapki kya madad kar sakta hoon?\nNeeche se koi sawaal chuno ya apna sawaal likho!';
 }
+
 
 // Role-based quick action buttons
 function getQuickActions(role: string | undefined): Array<{ label: string; icon: any; text: string }> {
-    switch (role) {
-        case 'CUSTOMER':
-            return [
-                { label: 'Track Shipment', icon: Package, text: 'Mera order track karo' },
-                { label: 'Book Truck', icon: Truck, text: 'Mujhe truck book karna hai' },
-                { label: 'Check Delays', icon: AlertTriangle, text: 'Delivery risk kya hai Mumbai to Pune' },
-                { label: 'Price Check', icon: DollarSign, text: 'Mumbai se Pune ka price bata do' },
-                { label: 'Optimize Route', icon: MapPin, text: 'Best route dikhao Mumbai to Pune' },
-                { label: 'Roadside Help', icon: LifeBuoy, text: 'Roadside help chahiye' },
-            ];
-        case 'DRIVER':
-            return [
-                { label: 'Find Loads', icon: Package, text: 'Load chahiye aaj' },
-                { label: 'Load Share', icon: Truck, text: 'Load share karna hai, empty run kam karo' },
-                { label: 'Best Route', icon: MapPin, text: 'Best route dikhao Mumbai to Pune' },
-                { label: 'Check Delays', icon: AlertTriangle, text: 'Delay risk kya hai aaj' },
-                { label: 'My Earnings', icon: DollarSign, text: 'Meri earnings dikhao' },
-                { label: 'Roadside Help', icon: LifeBuoy, text: 'Roadside help chahiye' },
-            ];
-        case 'OWNER':
-            return [
-                { label: 'Fleet Insights', icon: TrendingUp, text: 'Fleet insights dikhao' },
-                { label: 'Fleet Status', icon: Truck, text: 'Fleet status dikhao' },
-                { label: 'Load Sharing', icon: Package, text: 'Load sharing optimize karo' },
-                { label: 'Risk Check', icon: AlertTriangle, text: 'Delivery risk check karo' },
-                { label: 'Optimize Route', icon: MapPin, text: 'Best route dikhao' },
-                { label: 'Price Check', icon: DollarSign, text: 'Price check karo' },
-            ];
-        default: // PUBLIC MODE
-            return [
-                { label: 'What is TruckNet?', icon: Brain, text: 'What is TruckNet AI?' },
-                { label: 'Show Demo', icon: Sparkles, text: 'Show me a demo of delay prediction' },
-                { label: 'How it works', icon: Globe, text: 'How does load matching work?' },
-                { label: 'Pricing Info', icon: DollarSign, text: 'What are the charges?' },
-            ];
-    }
+    return [
+        { label: 'Best Route', icon: MapPin, text: 'Best route dikhao 🗺️' },
+        { label: 'Find Truck', icon: Truck, text: 'Truck dhundho 🚛' },
+        { label: 'Weather', icon: Globe, text: 'Aaj ka mausam kaisa hai? ⛅' },
+        { label: 'Price Check', icon: DollarSign, text: 'Load price batao 💰' },
+    ];
 }
 
 // Context-aware suggestions based on current page
@@ -284,7 +250,16 @@ export default function AIAssistant() {
         if (!isOpen) return;
 
         const loadChatHistory = async () => {
-            const userIdToUse = user?.id || 'anonymous';
+            if (isPublicMode) {
+                // Clear any anonymous session history, always start fresh for new/anonymous users
+                localStorage.removeItem(`chat_anonymous`);
+                setMessages([{ role: 'assistant', content: getWelcomeMessage(undefined) }]);
+                setShowQuickActions(true);
+                return;
+            }
+
+            // Only proceed for logged-in users with their own ID
+            const userIdToUse = user?.id;
             const localKey = `chat_${userIdToUse}`;
             const localData = localStorage.getItem(localKey);
 
@@ -297,11 +272,10 @@ export default function AIAssistant() {
             }
 
             try {
-                // Return empty smoothly if not logged in (handled by optionalAuth)
                 const res = await aiApi.get('/dost/history');
                 const history = res.data.history || [];
 
-                if (history.length > 0 && !isPublicMode) {
+                if (history.length > 0) {
                     setMessages(history);
                     localStorage.setItem(localKey, JSON.stringify(history));
                     setShowQuickActions(false);
@@ -421,7 +395,8 @@ export default function AIAssistant() {
         } catch (error: any) {
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: 'TruckNet Dost abhi available nahi hai. Thodi der baad try karo. 🙏'
+                content: 'TruckNet Dost abhi busy hai 🚛 \nThodi der mein try karo!',
+                action: 'RETRY'
             }]);
         } finally {
             setIsLoading(false);
@@ -429,10 +404,27 @@ export default function AIAssistant() {
     };
 
     const handleSend = async () => {
+        if (!user) {
+            setMessages(prev => [...prev, { role: 'user', content: input }, {
+                role: 'assistant',
+                content: 'Chat use karne ke liye pehle login karo! 🔐',
+                action: 'LOGIN_PROMPT'
+            }]);
+            setInput('');
+            return;
+        }
         await sendMessage(input);
     };
 
     const handleQuickAction = async (text: string) => {
+        if (!user) {
+            setMessages(prev => [...prev, { role: 'user', content: text }, {
+                role: 'assistant',
+                content: 'Chat use karne ke liye pehle login karo! 🔐',
+                action: 'LOGIN_PROMPT'
+            }]);
+            return;
+        }
         await sendMessage(text);
     };
 
@@ -647,6 +639,31 @@ export default function AIAssistant() {
                                         ))}
                                     </div>
                                 )}
+                                {msg.action === 'RETRY' && (
+                                    <div className="mt-2">
+                                        <button 
+                                            onClick={() => {
+                                                const userMsgs = messages.filter(m => m.role === 'user');
+                                                if(userMsgs.length > 0) {
+                                                    sendMessage(userMsgs[userMsgs.length - 1].content);
+                                                }
+                                            }}
+                                            className="text-white text-xs px-3 py-1.5 rounded-md bg-[#2563EB] hover:bg-[#1D4ED8] transition-colors shadow-sm"
+                                        >
+                                            Retry
+                                        </button>
+                                    </div>
+                                )}
+                                {msg.action === 'LOGIN_PROMPT' && (
+                                    <div className="mt-2">
+                                        <Button 
+                                            onClick={() => router.push('/auth/login')}
+                                            className="h-8 text-xs bg-[#2563EB] hover:bg-[#1D4ED8]"
+                                        >
+                                            Login Now
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -751,6 +768,7 @@ export default function AIAssistant() {
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 placeholder="Ask Dost anything..."
+                                disabled={!user}
                                 className="
                                     w-full resize-none
                                     border border-[#E5E7EB] rounded-xl
@@ -761,16 +779,17 @@ export default function AIAssistant() {
                                     focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]
                                     min-h-[40px] max-h-[100px]
                                     transition-all
+                                    disabled:bg-gray-100 disabled:cursor-not-allowed disabled:placeholder-gray-400
                                 "
                                 rows={1}
                             />
                         </div>
                         <button
                             onClick={handleSend}
-                            disabled={isLoading || !input.trim()}
+                            disabled={isLoading || !input.trim() || !user}
                             className={`
                                 flex-shrink-0 p-2.5 rounded-xl transition-all
-                                ${input.trim() && !isLoading
+                                ${input.trim() && !isLoading && !!user
                                     ? 'bg-[#2563EB] text-white shadow-md shadow-blue-500/20 hover:bg-[#1D4ED8] active:scale-95'
                                     : 'bg-gray-100 text-[#9CA3AF] cursor-not-allowed'
                                 }

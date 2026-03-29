@@ -354,8 +354,35 @@ def dynamic_pricing(req: PriceRequest):
 
 # --- Dost Chat Routes (placeholder for frontend compatibility) ---
 
+import base64
+import json
+
 @app.get("/dost/history")
-async def get_dost_history():
+async def get_dost_history(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return {"status": "error", "message": "Unauthorized: No token provided", "history": []}
+    
+    token = auth_header.split(" ")[1]
+    user_id = None
+    
+    try:
+        parts = token.split(".")
+        if len(parts) == 3:
+            payload_b64 = parts[1]
+            payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
+            payload_json = base64.b64decode(payload_b64).decode("utf-8")
+            payload = json.loads(payload_json)
+            user_id = payload.get("userId") or payload.get("id") or payload.get("sub")
+    except Exception as e:
+        print(f"Token parsing error: {e}")
+        return {"status": "error", "message": "Invalid token", "history": []}
+        
+    if not user_id:
+        return {"status": "error", "message": "Unauthorized: Invalid user", "history": []}
+
+    # Python engine currently does not persist history
+    # Return empty array for the specific userId
     return {"status": "success", "history": []}
 
 @app.post("/dost/chat")
