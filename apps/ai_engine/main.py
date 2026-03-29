@@ -373,20 +373,25 @@ async def dost_chat(request: Request):
             }
 
         hf_response = requests.post(
-            "https://router.huggingface.co/hf-inference/models/google/flan-t5-large/v1/chat/completions",
+            "https://router.huggingface.co/novita/v3/openai/chat/completions",
             headers={
                 "Authorization": f"Bearer {HF_API_TOKEN}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "google/flan-t5-large",
+                "model": "meta-llama/llama-3.1-8b-instruct",
                 "messages": [
                     {
-                        "role": "user",
-                        "content": f"You are TruckNet Dost, a helpful logistics assistant for Indian truckers. Reply in Hinglish (Hindi+English mix) in 2-3 sentences. User message: {message}"
+                        "role": "system",
+                        "content": "You are TruckNet Dost, a helpful AI assistant for Indian truck drivers and fleet owners. Always reply in Hinglish (mix of Hindi and English). Keep replies to 2-3 sentences. Use truck/logistics related emojis occasionally."
+                    },
+                    {
+                        "role": "user", 
+                        "content": message
                     }
                 ],
-                "max_tokens": 150
+                "max_tokens": 150,
+                "temperature": 0.7
             },
             timeout=30
         )
