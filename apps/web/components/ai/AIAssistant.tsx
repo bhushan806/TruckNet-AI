@@ -403,7 +403,13 @@ export default function AIAssistant() {
                 conversationHistory
             });
 
-            const { reply, structuredData, predictiveIntelligence } = res.data;
+            let reply = res.data.reply || res.data.message || "Kuch gadbad hui, try karo 🚛";
+            const structuredData = res.data.structuredData || null;
+            const predictiveIntelligence = res.data.predictiveIntelligence || null;
+
+            if (typeof reply === "string" && !reply.trim()) {
+                reply = "Namaste! Main TruckNet Dost hoon. Aapki kya help kar sakta hoon? 🚛";
+            }
             const assistantMsg: Message = {
                 role: 'assistant',
                 content: reply,
