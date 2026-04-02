@@ -1,3 +1,6 @@
+// ── Global Rate Limiter ──
+// Applied to ALL routes in app.ts. This is the top-level request throttle.
+// For the per-route AI limiter, see: rateLimit.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/AppError';
 

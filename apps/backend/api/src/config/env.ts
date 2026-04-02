@@ -20,8 +20,11 @@ const envSchema = z.object({
     GROQ_API_KEY: z.string().optional(),
     OLLAMA_HOST: z.string().optional(),
     HF_API_TOKEN: z.string().optional(),
-    // SECURITY: No localhost default in production
-    AI_ENGINE_URL: isProd ? z.string() : z.string().default('http://localhost:8000'),
+    AI_ENGINE_URL: z.string().default('http://localhost:8000'),
+
+    // SMS Service (FIX 7: Phone OTP authentication)
+    // Register at https://www.fast2sms.com — free tier available for India
+    FAST2SMS_API_KEY: z.string().optional(),
 
     // SECURITY: Restrict CORS to your frontend origin — required in production
     CORS_ORIGIN: isProd ? z.string() : z.string().default('*'),

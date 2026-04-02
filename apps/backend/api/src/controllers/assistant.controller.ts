@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '../middlewares/auth.middleware';
 import { AssistantService } from '../services/assistant.service';
 
 const assistantService = new AssistantService();
 
-export const chat = async (req: Request, res: Response, next: NextFunction) => {
+export const chat = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const { message } = req.body;
-        // In real app, get userId from req.user
-        const userId = 'mock-user-id';
+        const userId = req.user?.id || 'anonymous';
 
         const result = await assistantService.processCommand(userId, message);
         res.status(200).json({ status: 'success', data: result });

@@ -1,5 +1,6 @@
-// In-memory rate limiter for public AI endpoints to prevent abuse.
-// Uses a simple sliding window counter.
+// ── Per-Route AI Rate Limiter ──
+// Applied only to public AI endpoints (e.g., /api/ai/insights) to prevent abuse.
+// For the global limiter applied to all routes, see: rateLimiter.ts
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';

@@ -1,7 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { logger } from '../utils/logger';
-import { AiService } from '../services/ai.service';
+import { AiService } from '../services/ai-insights.service';
+
 import { UserModel } from '../models/mongoose/User';
 import { DriverProfileModel } from '../models/mongoose/DriverProfile';
 import { OwnerProfileModel } from '../models/mongoose/OwnerProfile';
@@ -93,6 +94,11 @@ export const getInsights = async (req: AuthRequest, res: Response, next: NextFun
 
 export const seedData = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
+        // Guard: seed route is disabled in production
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(403).json({ error: 'Seed endpoint is disabled in production.' });
+        }
+
         logger.info('Seeding demo data via API');
 
         const hashedPassword = await bcrypt.hash('password123', 10);

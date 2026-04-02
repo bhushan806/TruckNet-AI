@@ -1,7 +1,13 @@
+// ── TruckNet API — Express Application Entry Point ──
+// FIX 5:  cookie-parser added for HTTP-only JWT cookies
+// FIX 13: MongoDB reconnect logic in mongoose.ts (see that file)
+// FIX 14: Security hardening — helmet CSP, dual rate limiters
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { env } from './config/env';
@@ -11,6 +17,7 @@ import { sanitizeResponse } from './middlewares/sanitize';
 import { requestTimeout } from './middlewares/requestTimeout';
 import { logger } from './utils/logger';
 import { LoadService } from './services/load.service';
+import { rateLimiter } from './middlewares/rateLimiter';
 
 // Import Routes
 import authRoutes from './routes/auth.routes';
@@ -27,16 +34,13 @@ import financeRoutes from './routes/finance.routes';
 import documentRoutes from './routes/document.routes';
 import dostRoutes from './routes/dost.routes';
 import predictiveRoutes from './routes/predictive.routes';
-// AI routes have been moved to ai-node-engine microservice
 
 import { connectMongoose } from './config/mongoose';
-
-// Connect Mongoose
-connectMongoose();
-
 import { initSocket } from './config/socket';
-
 import path from 'path';
+
+// Connect Mongoose (FIX 13: resilient connection with auto-reconnect)
+connectMongoose();
 
 const app = express();
 const httpServer = createServer(app);
@@ -44,31 +48,69 @@ const httpServer = createServer(app);
 // Initialize Socket.io
 initSocket(httpServer);
 
-// ── Global Middleware ──
-app.use(helmet());
-// SECURITY: CORS restricted to configured frontend origin (env CORS_ORIGIN)
+// ── FIX 14: Security Headers (Helmet) ──
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            connectSrc: [
+                "'self'",
+                env.CORS_ORIGIN,
+                'https://trucknet-ai-engine.onrender.com',
+            ],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        },
+    },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// ── CORS ──
 app.use(cors({
-    origin: env.CORS_ORIGIN,
+    origin: env.CORS_ORIGIN === '*'
+        ? true
+        : env.CORS_ORIGIN.split(',').map(o => o.trim()),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: false,
+    credentials: true, // Required for cookie-based auth (FIX 5)
 }));
-// Use 'combined' format in production for audit logs, 'dev' for readability locally
-app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '10mb' }));
-app.use(requestTimeout(30_000));  // 30s request timeout
-app.use(sanitizeResponse);        // Strip sensitive fields from responses
 
-// Serve Static Uploads
+// ── FIX 5: Cookie Parser ──
+// Must come BEFORE auth middleware reads cookies
+app.use(cookieParser());
+
+// ── Logging ──
+app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// ── Body Parsing ──
+app.use(express.json({ limit: '10mb' }));
+
+// ── FIX 14: Global Rate Limiter (100 req / 15 min per IP) ──
+const globalLimiter = rateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests from this IP. Thodi der mein try karo.',
+});
+app.use(globalLimiter);
+
+// ── Request Timeout ──
+app.use(requestTimeout(30_000));
+
+// ── Response Sanitizer ──
+app.use(sanitizeResponse);
+
+// ── Static Uploads ──
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
-// ── Health Check ──
-app.get('/health', (req, res) => {
+// ── Health Checks ──
+app.get('/health', (_req, res) => {
     res.json({
         status: 'ok',
         service: 'trucknet-api',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: Math.floor(process.uptime()),
     });
 });
 
@@ -79,9 +121,9 @@ app.get('/api/health/complete', async (_req, res) => {
         timestamp: new Date().toISOString(),
         services: {
             database: mongoose.connection.readyState === 1 ? 'up' : 'down',
-            uptime: process.uptime(),
-            memory: process.memoryUsage()
-        }
+            uptime: Math.floor(process.uptime()),
+            memory: process.memoryUsage(),
+        },
     });
 });
 
@@ -93,7 +135,7 @@ app.use('/api/loads', loadRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/roadside', roadsideRoutes);
 app.use('/api/drivers', driverRoutes);
-app.use('/api/driver', driverRoutes);  // singular alias — frontend uses /api/driver/profile
+app.use('/api/driver', driverRoutes);        // singular alias — frontend uses /api/driver/profile
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/requests', requestRoutes);
@@ -101,7 +143,6 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/dost', dostRoutes);
 app.use('/api/predictive', predictiveRoutes);
-// AI routes proxy/moved to ai-node-engine
 
 // ── 404 Handler ──
 app.all('*', (req, _res, next) => {
@@ -116,7 +157,7 @@ const PORT = env.PORT;
 httpServer.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`, { environment: env.NODE_ENV });
 
-    // ── Start Predictive Intelligence Monitoring (non-blocking) ──
+    // Start Predictive Intelligence Monitoring (non-blocking)
     import('./ai/monitoring.service').then(({ monitoringService }) => {
         monitoringService.start();
     }).catch(err => {

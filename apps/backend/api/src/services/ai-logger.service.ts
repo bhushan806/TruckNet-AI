@@ -1,3 +1,6 @@
+// NOTE: This service is not yet wired to any route.
+// Prisma schema needs 'predictionLog' + 'trainingData' tables
+// before this can be activated. Kept for future sprint.
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
 

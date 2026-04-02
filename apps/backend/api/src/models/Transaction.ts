@@ -1,3 +1,5 @@
+// TODO: Wire to finance.service.ts in next sprint.
+// This model is defined but not currently imported by any service or controller.
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ITransaction extends Document {

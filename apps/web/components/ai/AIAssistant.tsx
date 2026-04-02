@@ -235,10 +235,34 @@ export default function AIAssistant() {
         return () => clearInterval(interval);
     }, [isLoading]);
 
-    // Reset state completely when user identity changes
+    // ── FIX 4: Immediate state wipe on user identity change ──
+    // Track which user's data is currently loaded so we can detect switches.
     const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
 
+    // ── FIX 8: Per-tab anonymous session ID ──
+    // Uses sessionStorage so it auto-clears when the browser tab closes.
+    function getAnonymousSessionId(): string {
+        let sid = '';
+        try {
+            sid = sessionStorage.getItem('anon_session_id') || '';
+            if (!sid) {
+                sid = crypto.randomUUID();
+                sessionStorage.setItem('anon_session_id', sid);
+            }
+        } catch {
+            sid = `anon_${Date.now()}`;
+        }
+        return sid;
+    }
+
+    // Derive chat storage key — user-specific or per-tab anonymous
+    const chatKey = user?.id
+        ? `chat_${user.id}`
+        : `chat_anon_${getAnonymousSessionId()}`;
+
     useEffect(() => {
+        // IMMEDIATELY wipe messages before loading the new user's history.
+        // This prevents user A's messages from being re-saved under user B's key.
         if (user?.id !== currentUserId) {
             setMessages([]);
             setShowQuickActions(false);
@@ -251,63 +275,81 @@ export default function AIAssistant() {
 
         const loadChatHistory = async () => {
             if (isPublicMode) {
-                // Clear any anonymous session history, always start fresh for new/anonymous users
-                localStorage.removeItem(`chat_anonymous`);
-                setMessages([{ role: 'assistant', content: getWelcomeMessage(undefined) }]);
-                setShowQuickActions(true);
+                // FIX 8: Anonymous visitors get a per-tab isolated session.
+                // sessionStorage means closing the tab clears the demo chat.
+                const anonKey = chatKey; // already scoped with randomUUID
+                try {
+                    const saved = sessionStorage.getItem(anonKey);
+                    const parsed = saved ? JSON.parse(saved) : [];
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setMessages(parsed);
+                        setShowQuickActions(false);
+                    } else {
+                        setMessages([{ role: 'assistant', content: getWelcomeMessage(undefined) }]);
+                        setShowQuickActions(true);
+                    }
+                } catch {
+                    setMessages([{ role: 'assistant', content: getWelcomeMessage(undefined) }]);
+                    setShowQuickActions(true);
+                }
                 return;
             }
 
-            // Only proceed for logged-in users with their own ID
-            const userIdToUse = user?.id;
-            const localKey = `chat_${userIdToUse}`;
-            const localData = localStorage.getItem(localKey);
+            // FIX 4: Load logged-in user's history — localStorage first, then server.
+            // At this point currentUserId === user?.id (already synced above).
+            const localData = localStorage.getItem(chatKey);
 
             if (localData) {
-                const parsed = JSON.parse(localData);
-                if (parsed.length > 0) {
-                    setMessages(parsed);
-                    setShowQuickActions(false);
+                try {
+                    const parsed = JSON.parse(localData);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setMessages(parsed);
+                        setShowQuickActions(false);
+                    }
+                } catch {
+                    localStorage.removeItem(chatKey);
                 }
             }
 
+            // Fetch from server (Node backend /api/dost/history is authoritative)
             try {
                 const res = await aiApi.get('/dost/history');
-                const history = res.data.history || [];
+                const history = res.data?.history || [];
 
-                if (history.length > 0) {
+                if (Array.isArray(history) && history.length > 0) {
                     setMessages(history);
-                    localStorage.setItem(localKey, JSON.stringify(history));
+                    localStorage.setItem(chatKey, JSON.stringify(history));
                     setShowQuickActions(false);
-                } else if (!localData || JSON.parse(localData).length === 0) {
-                    setMessages([{
-                        role: 'assistant',
-                        content: getWelcomeMessage(user?.role)
-                    }]);
+                } else if (!localData) {
+                    setMessages([{ role: 'assistant', content: getWelcomeMessage(user?.role) }]);
                     setShowQuickActions(true);
                 }
             } catch {
-                if (!localData || JSON.parse(localData).length === 0) {
-                    setMessages([{
-                        role: 'assistant',
-                        content: getWelcomeMessage(user?.role)
-                    }]);
+                // Server unreachable — use cached local data or welcome message
+                if (!localData) {
+                    setMessages([{ role: 'assistant', content: getWelcomeMessage(user?.role) }]);
                     setShowQuickActions(true);
                 }
             }
         };
 
         loadChatHistory();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen, user?.id, user?.role, isPublicMode]);
 
-    // Sync messages to local storage
+    // ── Sync messages to storage ──
+    // FIX 4: Only sync if the user identity matches what's loaded.
+    // FIX 8: Anonymous users write to sessionStorage (not localStorage).
     useEffect(() => {
-        const userIdToUse = user?.id || 'anonymous';
-        // Allow anonymous sync or explicitly matched user sync
-        if ((isPublicMode || user?.id === currentUserId) && messages.length > 0) {
-            localStorage.setItem(`chat_${userIdToUse}`, JSON.stringify(messages));
+        if (messages.length === 0) return;
+        if (isPublicMode) {
+            try { sessionStorage.setItem(chatKey, JSON.stringify(messages)); } catch { /* ignore */ }
+        } else if (user?.id === currentUserId && currentUserId) {
+            // Confirmed same user — safe to persist
+            try { localStorage.setItem(chatKey, JSON.stringify(messages)); } catch { /* ignore */ }
         }
-    }, [messages, user?.id, currentUserId, isPublicMode]);
+        // If user?.id !== currentUserId, the identity reset is still in flight — do NOT write.
+    }, [messages, user?.id, currentUserId, isPublicMode, chatKey]);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
