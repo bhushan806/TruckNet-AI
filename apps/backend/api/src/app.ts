@@ -92,14 +92,8 @@ const corsOptions = {
 // 1. Setup CORS middleware
 app.use(cors(corsOptions));
 
-// 2. Global OPTIONS Preflight Handler (CRITICAL FIX)
-app.use((req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        res.status(204).end();
-        return;
-    }
-    next();
-});
+// 2. Global OPTIONS Preflight Handler (proper CORS handling)
+app.options('*', cors(corsOptions));
 
 // ── FIX 5: Cookie Parser ──
 // Must come BEFORE auth middleware reads cookies
