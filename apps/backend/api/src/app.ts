@@ -67,15 +67,45 @@ app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
-// ── CORS ──
-app.use(cors({
-    origin: env.CORS_ORIGIN === '*'
-        ? true
-        : env.CORS_ORIGIN.split(',').map(o => o.trim()),
+// ── CORS Configuration & Preflight Handling ──
+const allowedOrigins = [
+    'https://trucknet-frontend.vercel.app',
+    'http://localhost:3000'
+];
+
+// Add required headers manually as fallback
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    next();
+});
+
+const corsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        // Allow requests with no origin (like mobile apps, curl, or Postman)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true, // Required for cookie-based auth (FIX 5)
-}));
+    credentials: true,
+};
+
+// Setup CORS middleware
+app.use(cors(corsOptions));
+
+// Ensure OPTIONS requests are handled globally for preflight
+app.options('*', cors(corsOptions));
 
 // ── FIX 5: Cookie Parser ──
 // Must come BEFORE auth middleware reads cookies
