@@ -44,7 +44,7 @@ function NavItems({ user }: { user: any }) {
 }
 
 export function Navbar() {
-    const { user, logout } = useAuth();
+    const { user, loading, logout } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -67,8 +67,12 @@ export function Navbar() {
 
                 {/* Actions & Mobile Toggle */}
                 <div className="flex items-center gap-4">
-                    {user ? (
-                        <div className="flex items-center gap-4">
+                    {loading ? (
+                        <div className="hidden md:flex gap-2">
+                            <Button variant="ghost" size="sm" disabled className="opacity-50">...</Button>
+                        </div>
+                    ) : user ? (
+                        <div className="flex items-center gap-4 animate-in fade-in">
                             <span className="text-sm font-medium hidden lg:inline-block text-muted-foreground">
                                 {user.name}
                             </span>
@@ -78,7 +82,7 @@ export function Navbar() {
                             </Button>
                         </div>
                     ) : (
-                        <div className="hidden md:flex gap-2">
+                        <div className="hidden md:flex gap-2 animate-in fade-in">
                             <Link href="/auth/login">
                                 <Button variant="ghost" size="sm">Log in</Button>
                             </Link>
