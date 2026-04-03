@@ -77,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the Authorization header fallback in api.ts interceptor.
         if (token) {
             localStorage.setItem('token', token);
+            // Set an indicator cookie for the Next.js middleware (which runs on the frontend domain)
+            document.cookie = `is_logged_in=true; path=/; max-age=${15 * 60}`;
         }
 
         setUser(userData);
@@ -97,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
+            document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             setUser(null);
             router.push('/auth/login');
         }

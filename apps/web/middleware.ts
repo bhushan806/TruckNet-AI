@@ -21,7 +21,7 @@ const AUTH_PATHS = [
 ];
 
 export function middleware(request: NextRequest) {
-    const token = request.cookies.get('access_token');
+    const token = request.cookies.get('access_token')?.value || request.cookies.get('is_logged_in')?.value;
     const pathname = request.nextUrl.pathname;
 
     const isProtected = PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix));
