@@ -73,18 +73,6 @@ const allowedOrigins = [
     'http://localhost:3000'
 ];
 
-// Add required headers manually as fallback
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin && allowedOrigins.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    next();
-});
-
 const corsOptions = {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
         // Allow requests with no origin (like mobile apps, curl, or Postman)
@@ -101,11 +89,17 @@ const corsOptions = {
     credentials: true,
 };
 
-// Setup CORS middleware
+// 1. Setup CORS middleware
 app.use(cors(corsOptions));
 
-// Ensure OPTIONS requests are handled globally for preflight
-app.options('*', cors(corsOptions));
+// 2. Global OPTIONS Preflight Handler (CRITICAL FIX)
+app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+    }
+    next();
+});
 
 // ── FIX 5: Cookie Parser ──
 // Must come BEFORE auth middleware reads cookies

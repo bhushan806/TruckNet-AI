@@ -151,6 +151,10 @@ export const logout = async (req: AuthRequest, res: Response, next: NextFunction
 
 export const sendOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        if (!req.body || typeof req.body !== 'object' || Object.keys(req.body).length === 0) {
+            return res.status(400).json({ status: 'error', message: 'Request body is empty or invalid' });
+        }
+
         const { phone } = sendOtpSchema.parse(req.body);
         await otpService.sendOtp(phone);
         res.status(200).json({
@@ -158,6 +162,9 @@ export const sendOtp = async (req: Request, res: Response, next: NextFunction) =
             message: 'OTP bhej diya gaya hai. 6-digit code check karo.',
         });
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ status: 'error', message: 'Invalid payload', errors: error.errors });
+        }
         next(error);
     }
 };
