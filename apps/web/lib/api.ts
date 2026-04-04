@@ -63,18 +63,22 @@ api.interceptors.response.use(
     const status = error.response?.status;
     if (status === 401) {
       if (typeof window !== 'undefined') {
-        // Clear local auth state and redirect
+        // Clear local auth state
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        // Only redirect if not already on auth page
-        if (!window.location.pathname.startsWith('/auth')) {
-            // Show toast before redirect
-            import('./toast').then(({ notify }) => {
-              notify.error('Session khatam ho gaya. Dobara login karo. 🔐');
-            });
-            setTimeout(() => { window.location.href = '/auth/login'; }, 1200);
-          }
-
+        document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        // Only redirect if not already on the landing or auth pages
+        const isOnAuthOrLanding =
+          window.location.pathname === '/' ||
+          window.location.pathname.startsWith('/auth');
+        if (!isOnAuthOrLanding) {
+          // Show toast before redirect to landing page
+          import('./toast').then(({ notify }) => {
+            notify.error('Your session has expired. Please log in again. 🔐');
+          });
+          // Redirect to landing page, not login page
+          setTimeout(() => { window.location.href = '/'; }, 1200);
+        }
       }
     }
     return Promise.reject(error);

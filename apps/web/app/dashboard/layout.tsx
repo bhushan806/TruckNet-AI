@@ -1,14 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { useState } from 'react';
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-// Sheet import removed
-// Since I don't have Sheet, I will use a simple mobile overlay implementation here or just a hidden sidebar for now.
-// Actually, I can quickly create a basic Sheet component or just use a conditional class.
-// Let's stick to a responsive layout where sidebar is hidden on mobile and can be toggled.
 
 export default function DashboardLayout({
     children,
@@ -16,6 +15,29 @@ export default function DashboardLayout({
     children: React.ReactNode;
 }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user, loading } = useAuth();
+    const router = useRouter();
+
+    // Belt-and-suspenders client-side guard:
+    // Middleware handles most cases, but this catches any edge cases where
+    // state changes after hydration (e.g., session expiry while on dashboard).
+    useEffect(() => {
+        if (!loading && !user) {
+            router.replace('/');
+        }
+    }, [user, loading, router]);
+
+    // Prevent flash of dashboard content while checking auth
+    if (loading || !user) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-muted/40">
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <p className="text-sm">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen w-full bg-muted/40">

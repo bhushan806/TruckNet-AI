@@ -1,9 +1,14 @@
 'use client';
 
 // ── Auth Context ──
-// FIX 5: Tokens are now stored in HTTP-only cookies (set by backend).
-//         We only store non-sensitive user profile in localStorage as a cache.
-//         The cookie is sent automatically on every request via withCredentials: true.
+// Tokens are stored in HTTP-only cookies (set by backend).
+// We only store non-sensitive user profile in localStorage as a cache.
+// The cookie is sent automatically on every request via withCredentials: true.
+//
+// AUTH FLOW:
+//   login()  → set user state + cookie indicator + push to correct dashboard
+//   logout() → clear state + redirect to landing page "/"
+//   onMount  → verify session via /auth/me; redirect if user already logged in
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -32,6 +37,13 @@ const AuthContext = createContext<AuthContextType>({
     logout: async () => { },
 });
 
+/** Derive the correct dashboard path based on user role */
+function getDashboardPath(role: User['role']): string {
+    if (role === 'DRIVER') return '/dashboard/driver';
+    if (role === 'OWNER') return '/dashboard/owner';
+    return '/dashboard/customer';
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
@@ -40,7 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // On app mount: check for cached user profile in localStorage.
         // The actual session validity is confirmed by the HTTP-only cookie the browser sends.
-        // If cookie is expired, the next API call will return 401 and the interceptor redirects to login.
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
             try {
@@ -50,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }
 
-        // Optionally verify session is still valid by calling /api/auth/me
+        // Verify session is still valid by calling /auth/me
         // This handles the case where the cookie expired between visits.
         api.get('/auth/me')
             .then(res => {
@@ -69,20 +80,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const login = (userData: User, token?: string) => {
-        // FIX 5: Only store non-sensitive user profile in localStorage.
-        // The JWT is in an HTTP-only cookie set by the backend — do NOT store it in localStorage.
+        // Store non-sensitive user profile in localStorage.
         localStorage.setItem('user', JSON.stringify(userData));
 
-        // Legacy support: if caller still sends token (e.g., mobile flow), store it for
-        // the Authorization header fallback in api.ts interceptor.
+        // Always set the indicator cookie for the Next.js middleware.
+        // This must happen BEFORE router.push so the middleware sees it.
+        const maxAge = token ? 15 * 60 : 60 * 60 * 24; // 15 min if short-lived token, else 24h
+        document.cookie = `is_logged_in=true; path=/; max-age=${maxAge}`;
+
+        // Legacy support: if caller sends token, store it for Authorization header fallback.
         if (token) {
             localStorage.setItem('token', token);
         }
-        
-        // Let middleware know user is logged in (since it can't see the cross-domain HTTP-only cookie)
-        document.cookie = `is_logged_in=true; path=/; max-age=${15 * 60}`;
 
         setUser(userData);
+
+        // ── CRITICAL FIX: immediately navigate to the correct dashboard ──
+        // This removes the need for manual refresh after login.
+        router.push(getDashboardPath(userData.role));
     };
 
     const logout = async () => {
@@ -100,9 +115,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
+            // Clear indicator cookie
             document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             setUser(null);
-            window.location.href = '/';
+            // ── FIX: go to landing page, not login page ──
+            router.push('/');
         }
     };
 

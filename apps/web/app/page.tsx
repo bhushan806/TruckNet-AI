@@ -1,18 +1,17 @@
 'use client';
 
 // ── TruckNet India — Landing Page ──
-// FIX 11: Complete rebuild with all 6 required sections.
-// Hero → User Cards → How It Works → Dost Chat Preview → Stats → Footer
+// All sections: Hero → User Cards → How It Works → Dost Chat Preview → Stats → Footer
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import {
     Truck, Package, Users, MapPin, ArrowRight, CheckCircle2,
     Star, Shield, Zap, Brain, Phone, ChevronRight, MessageCircle,
     TrendingUp, Navigation, Clock, IndianRupee
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
 
 // ── Animated Counter Hook ──
 function useCountUp(target: number, duration = 2000, startTrigger = false) {
@@ -31,13 +30,13 @@ function useCountUp(target: number, duration = 2000, startTrigger = false) {
     return count;
 }
 
-// ── Mock Chat conversation ──
+// ── Demo Chat conversation (English) ──
 const DEMO_CHAT = [
-    { role: 'assistant', content: 'Hello! I am TruckNet Dost. How can I help you today? 🚛' },
-    { role: 'user', content: 'What is the best route from Mumbai to Pune?' },
-    { role: 'assistant', content: 'The Expressway (NH48) is best for Mumbai → Pune. Distance: 150km, Time: ~2.5 hours. Toll: ₹295 approx. Fuel estimate: ₹800. Any other questions? 🗺️' },
-    { role: 'user', content: 'Tell me the freight price for 5 tonnes' },
-    { role: 'assistant', content: 'The rate for 5 tonne freight on the Mumbai-Pune route is ₹12,000-₹15,000. It can be 20% more during peak season. Post on TruckNet for the best bid! 💰' },
+    { role: 'assistant', content: 'Hello! I\'m TruckNet Dost. How can I help you today? 🚛' },
+    { role: 'user', content: 'What\'s the best route from Mumbai to Pune?' },
+    { role: 'assistant', content: 'For Mumbai → Pune, the Expressway (NH48) is best. Distance: 150km, Time: ~2.5 hours. Toll: ₹295 approx. Fuel estimate: ₹800. Any other questions? 🗺️' },
+    { role: 'user', content: 'What\'s the freight price for 5 tonnes?' },
+    { role: 'assistant', content: 'On the Mumbai–Pune route, 5 tonne freight rates are ₹12,000–₹15,000. During peak/mango season it can go 20% higher. Post on TruckNet to get the best bid! 💰' },
 ];
 
 export default function HomePage() {
@@ -47,10 +46,12 @@ export default function HomePage() {
     const [statsVisible, setStatsVisible] = useState(false);
     const [chatStep, setChatStep] = useState(0);
 
-    // Redirect if already logged in
+    // If already logged in, redirect to dashboard
     useEffect(() => {
         if (!loading && user) {
-            router.push(`/dashboard/${user.role.toLowerCase()}`);
+            if (user.role === 'DRIVER') router.replace('/dashboard/driver');
+            else if (user.role === 'OWNER') router.replace('/dashboard/owner');
+            else router.replace('/dashboard/customer');
         }
     }, [user, loading, router]);
 
@@ -75,14 +76,6 @@ export default function HomePage() {
     const ownersCount = useCountUp(500, 2000, statsVisible);
     const citiesCount = useCountUp(50, 1500, statsVisible);
     const ratingCount = useCountUp(48, 2000, statsVisible);
-
-    if (loading || user) {
-        return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-                <span className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-            </div>
-        );
-    }
 
     return (
         <main className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
@@ -109,36 +102,36 @@ export default function HomePage() {
                     {/* Badge */}
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-6">
                         <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                        Indian Logistics Revolution
+                        India's Logistics Revolution
                     </div>
 
                     {/* Headline */}
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tight leading-tight mb-6">
                         <span className="bg-clip-text text-transparent bg-gradient-to-br from-white via-blue-100 to-blue-300">
-                            India's Smartest
+                            India's Most
                         </span>
                         <br />
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
-                            Truck Network
+                            Smart Truck Network
                         </span>
                     </h1>
 
                     <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                        AI-powered load matching, real-time GPS tracking, aur guaranteed payments —<br className="hidden md:block" />
+                        AI-powered load matching, real-time GPS tracking, and guaranteed payments —<br className="hidden md:block" />
                         everything in one place. 🚛
                     </p>
 
                     {/* CTAs */}
                     <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
                         <Link href="/auth/register">
-                            <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-2xl text-base shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] transition-all hover:scale-105 active:scale-95">
+                            <button id="cta-post-load" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold rounded-2xl text-base shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:shadow-[0_0_60px_rgba(59,130,246,0.5)] transition-all hover:scale-105 active:scale-95">
                                 <Package className="h-5 w-5" />
                                 Post a Load
                                 <ArrowRight className="h-4 w-4" />
                             </button>
                         </Link>
                         <Link href="/find-vehicle">
-                            <button className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-slate-800/80 hover:bg-slate-700/80 text-white font-semibold rounded-2xl text-base border border-slate-700 hover:border-slate-600 transition-all hover:scale-105 active:scale-95">
+                            <button id="cta-find-truck" className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-slate-800/80 hover:bg-slate-700/80 text-white font-semibold rounded-2xl text-base border border-slate-700 hover:border-slate-600 transition-all hover:scale-105 active:scale-95">
                                 <Truck className="h-5 w-5 text-blue-400" />
                                 Find a Truck
                             </button>
@@ -149,7 +142,7 @@ export default function HomePage() {
                     <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-500">
                         {[
                             { icon: Shield, text: 'Verified Drivers' },
-                            { icon: Zap, text: '2 min Matching' },
+                            { icon: Zap, text: '2-Min Matching' },
                             { icon: Star, text: '4.8★ Rating' },
                             { icon: CheckCircle2, text: 'Secure Payments' },
                         ].map((item, i) => (
@@ -169,9 +162,9 @@ export default function HomePage() {
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                            A solution for everyone
+                            Something for Everyone
                         </h2>
-                        <p className="text-slate-400 text-lg">Whether you're a customer, fleet owner, or driver — TruckNet helps you all</p>
+                        <p className="text-slate-400 text-lg">Whether you're a customer, fleet owner, or driver — TruckNet has you covered</p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-6">
@@ -181,9 +174,9 @@ export default function HomePage() {
                                 color: 'from-blue-600 to-blue-700',
                                 glow: 'blue',
                                 title: 'Customer / Factory',
-                                tagline: 'Post your load',
+                                tagline: 'Post your load with ease',
                                 benefits: [
-                                    'Post a load, get the best truck in 2 mins',
+                                    'Post a load, get the best truck in 2 minutes',
                                     'Real-time GPS tracking',
                                     'Guaranteed delivery with insurance',
                                 ],
@@ -195,13 +188,13 @@ export default function HomePage() {
                                 color: 'from-violet-600 to-violet-700',
                                 glow: 'violet',
                                 title: 'Fleet Owner',
-                                tagline: 'Manage your fleet',
+                                tagline: 'Manage your fleet smarter',
                                 benefits: [
-                                    'Find the best loads automatically with AI',
+                                    'AI automatically finds the best loads',
                                     'Track driver performance',
-                                    'Earning analytics & reports',
+                                    'Earnings analytics & reports',
                                 ],
-                                cta: 'Register Fleet',
+                                cta: 'Register Your Fleet',
                                 href: '/auth/register?role=OWNER',
                             },
                             {
@@ -211,8 +204,8 @@ export default function HomePage() {
                                 title: 'Driver',
                                 tagline: 'Earn more, drive safely',
                                 benefits: [
-                                    'Get help from Dost AI anytime',
-                                    'Get best route suggestions',
+                                    'Get help from TruckNet Dost AI anytime',
+                                    'Best route suggestions',
                                     'Emergency SOS feature available',
                                 ],
                                 cta: 'Join as a Driver',
@@ -258,8 +251,8 @@ export default function HomePage() {
             ══════════════════════════════════════════════════ */}
             <section className="py-20 px-4 bg-slate-900/50">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">How does it work?</h2>
-                    <p className="text-slate-400 mb-12">Delivery completed in 3 simple steps</p>
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">How Does It Work?</h2>
+                    <p className="text-slate-400 mb-12">Complete your delivery in 3 simple steps</p>
 
                     <div className="grid md:grid-cols-3 gap-6 relative">
                         {/* Connector lines */}
@@ -273,7 +266,7 @@ export default function HomePage() {
                                 color: 'text-blue-400',
                                 bg: 'bg-blue-500/10 border-blue-500/20',
                                 title: 'Post a Load',
-                                desc: 'Enter your load details — pickup, delivery, weight, goods type. It takes just 2 minutes!',
+                                desc: 'Fill in your load details — pickup, delivery, weight, goods type. Takes only 2 minutes!',
                             },
                             {
                                 step: '02',
@@ -281,7 +274,7 @@ export default function HomePage() {
                                 color: 'text-violet-400',
                                 bg: 'bg-violet-500/10 border-violet-500/20',
                                 title: 'AI Finds a Match',
-                                desc: 'Our AI engine finds the best available trucks and gets real-time quotes.',
+                                desc: 'Our AI engine finds the best available trucks and fetches real-time quotes for you.',
                             },
                             {
                                 step: '03',
@@ -289,7 +282,7 @@ export default function HomePage() {
                                 color: 'text-emerald-400',
                                 bg: 'bg-emerald-500/10 border-emerald-500/20',
                                 title: 'Delivery Complete!',
-                                desc: 'Book a driver, track via GPS, and release payment on delivery.',
+                                desc: 'Book the driver, track via GPS, and release payment when delivery is confirmed.',
                             },
                         ].map((step, i) => (
                             <div key={i} className="relative">
@@ -321,18 +314,18 @@ export default function HomePage() {
                             </div>
                             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                                 TruckNet Dost —<br />
-                                <span className="text-violet-400">Your AI Companion</span>
+                                <span className="text-violet-400">Your AI Co-Pilot</span>
                             </h2>
                             <p className="text-slate-400 mb-6 leading-relaxed">
-                                Get answers to any question. Route planning, pricing, load matching —
-                                Dost helps with everything. Available 24/7!
+                                Get answers to any logistics question in plain language. Route planning, pricing, load matching —
+                                Dost helps with it all. Available 24/7!
                             </p>
                             <ul className="space-y-3 mb-8">
                                 {[
                                     { icon: Navigation, text: 'Best route suggestions' },
                                     { icon: IndianRupee, text: 'Real-time freight pricing' },
                                     { icon: Phone, text: 'Emergency SOS assistance' },
-                                    { icon: MessageCircle, text: 'Multilingual support' },
+                                    { icon: MessageCircle, text: 'Hindi + English (Hinglish) support' },
                                 ].map((item, i) => (
                                     <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
                                         <div className="h-7 w-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
@@ -343,7 +336,7 @@ export default function HomePage() {
                                 ))}
                             </ul>
                             <Link href="/auth/register">
-                                <button className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-violet-500 hover:opacity-90 text-white font-semibold rounded-xl transition-all hover:scale-105 shadow-lg shadow-violet-500/20">
+                                <button id="cta-chat-dost" className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-violet-500 hover:opacity-90 text-white font-semibold rounded-xl transition-all hover:scale-105 shadow-lg shadow-violet-500/20">
                                     Chat with Dost
                                     <ArrowRight className="h-4 w-4" />
                                 </button>
@@ -404,8 +397,8 @@ export default function HomePage() {
             ══════════════════════════════════════════════════ */}
             <section ref={statsRef} className="py-20 px-4 bg-gradient-to-br from-blue-950/50 to-slate-950">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Trusted by India</h2>
-                    <p className="text-slate-400 mb-12">Lakhs of people trust TruckNet</p>
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Trusted Across India</h2>
+                    <p className="text-slate-400 mb-12">Thousands of businesses rely on TruckNet every day</p>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         {[
@@ -442,7 +435,7 @@ export default function HomePage() {
                             </div>
                             <div>
                                 <p className="font-bold text-white text-sm">TruckNet India</p>
-                                <p className="text-slate-500 text-xs">Bharat ka Truck Network</p>
+                                <p className="text-slate-500 text-xs">India's Smart Truck Network</p>
                             </div>
                         </div>
 

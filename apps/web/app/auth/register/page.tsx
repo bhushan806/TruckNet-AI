@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Truck } from 'lucide-react';
 
 export default function RegisterPage() {
-    const router = useRouter();
+    const { login } = useAuth();
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -35,14 +35,8 @@ export default function RegisterPage() {
             const res = await api.post('/auth/register', formData);
             const { user, accessToken } = res.data.data;
 
-            localStorage.setItem('token', accessToken);
-            localStorage.setItem('user', JSON.stringify(user));
-            document.cookie = `is_logged_in=true; path=/; max-age=${15 * 60}`;
-
-            // Force hard navigation for guaranteed correct edge middleware routing
-            if (user.role === 'DRIVER') window.location.href = '/dashboard/driver';
-            else if (user.role === 'OWNER') window.location.href = '/dashboard/owner';
-            else window.location.href = '/dashboard/customer';
+            // login() sets state, sets cookie, and automatically redirects to correct dashboard
+            login(user, accessToken);
 
         } catch (err: any) {
             setError(err.response?.data?.message || 'Registration failed');
