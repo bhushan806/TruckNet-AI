@@ -29,9 +29,8 @@ export function middleware(request: NextRequest) {
 
     // Redirect unauthenticated users away from protected pages
     if (isProtected && !token) {
-        const loginUrl = new URL('/auth/login', request.url);
-        loginUrl.searchParams.set('redirect', pathname);
-        return NextResponse.redirect(loginUrl);
+        const homeUrl = new URL('/', request.url);
+        return NextResponse.redirect(homeUrl);
     }
 
     // Redirect authenticated users away from login/register pages

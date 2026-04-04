@@ -37,10 +37,12 @@ export default function RegisterPage() {
 
             localStorage.setItem('token', accessToken);
             localStorage.setItem('user', JSON.stringify(user));
+            document.cookie = `is_logged_in=true; path=/; max-age=${15 * 60}`;
 
-            if (user.role === 'DRIVER') router.push('/dashboard/driver');
-            else if (user.role === 'OWNER') router.push('/dashboard/owner');
-            else router.push('/dashboard/customer');
+            // Force hard navigation for guaranteed correct edge middleware routing
+            if (user.role === 'DRIVER') window.location.href = '/dashboard/driver';
+            else if (user.role === 'OWNER') window.location.href = '/dashboard/owner';
+            else window.location.href = '/dashboard/customer';
 
         } catch (err: any) {
             setError(err.response?.data?.message || 'Registration failed');
