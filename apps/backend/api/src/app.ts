@@ -19,6 +19,14 @@ import { logger } from './utils/logger';
 import { LoadService } from './services/load.service';
 import { rateLimiter } from './middlewares/rateLimiter';
 
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection', { reason });
+});
+
 // Import Routes
 import authRoutes from './routes/auth.routes';
 import vehicleRoutes from './routes/vehicle.routes';
@@ -96,6 +104,36 @@ app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // ── Body Parsing ──
 app.use(express.json({ limit: '10mb' }));
 
+// ── Request Timing Logs (Slow Endpoint Detection) ──
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (duration > 1000) {
+            logger.warn(`Slow request detected: ${req.method} ${req.originalUrl} took ${duration}ms`);
+        }
+    });
+    next();
+});
+
+// ── Health Checks ──
+app.get('/health', (req, res) => {
+    res.status(200).send("OK");
+});
+
+app.get('/api/health/complete', async (_req, res) => {
+    const mongoose = (await import('mongoose')).default;
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        services: {
+            database: mongoose.connection.readyState === 1 ? 'up' : 'down',
+            uptime: Math.floor(process.uptime()),
+            memory: process.memoryUsage(),
+        },
+    });
+});
+
 // ── FIX 14: Global Rate Limiter (100 req / 15 min per IP) ──
 const globalLimiter = rateLimiter({
     windowMs: 15 * 60 * 1000,
@@ -113,28 +151,7 @@ app.use(sanitizeResponse);
 // ── Static Uploads ──
 app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 
-// ── Health Checks ──
-app.get('/health', (_req, res) => {
-    res.json({
-        status: 'ok',
-        service: 'trucknet-api',
-        timestamp: new Date().toISOString(),
-        uptime: Math.floor(process.uptime()),
-    });
-});
-
-app.get('/api/health/complete', async (_req, res) => {
-    const mongoose = (await import('mongoose')).default;
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        services: {
-            database: mongoose.connection.readyState === 1 ? 'up' : 'down',
-            uptime: Math.floor(process.uptime()),
-            memory: process.memoryUsage(),
-        },
-    });
-});
+// (Health endpoints moved above rate limiter)
 
 // ── API Routes ──
 app.use('/api/auth', authRoutes);

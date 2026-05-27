@@ -45,7 +45,7 @@ export const callGrokAPI = async (messages: ChatMessage[]) => {
                 model: "llama3",
                 messages: messages,
                 stream: false
-            }, { timeout: 15000 });
+            }, { timeout: 60000 });
             return response.data.message.content;
         } catch {
             // Ollama not available, fallthrough
@@ -74,7 +74,7 @@ export const callGrokAPI = async (messages: ChatMessage[]) => {
             { inputs: prompt },
             {
                 headers,
-                timeout: 15000,
+                timeout: 60000,
             }
         );
 

@@ -15,7 +15,7 @@ import type { RiskPredictionResult } from './types/predictive.types';
 class MonitoringService {
     private isRunning = false;
     private cycleCount = 0;
-    private baseIntervalMs = 15000; // 15 seconds default
+    private baseIntervalMs = 60000; // 60 seconds default
 
     /**
      * Start the monitoring loop.
@@ -193,12 +193,12 @@ class MonitoringService {
     }
 
     /**
-     * Returns a jittered delay between 10000-30000 ms.
+     * Returns a jittered delay based on baseIntervalMs.
      * Prevents thundering herd when multiple instances run.
      */
     private getJitteredDelay(): number {
-        const jitter = Math.random() * 20000; // 0-20s
-        return 10000 + jitter; // 10-30s range
+        const jitter = Math.random() * (this.baseIntervalMs * 0.5); // up to 50% extra
+        return this.baseIntervalMs + jitter; 
     }
 }
 

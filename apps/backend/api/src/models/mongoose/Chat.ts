@@ -55,8 +55,7 @@ const ChatSchema: Schema = new Schema(
     {
         userId: {
             type: String,
-            required: true,
-            index: true
+            required: true
         },
         role: {
             type: String,
