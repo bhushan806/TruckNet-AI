@@ -3,14 +3,12 @@
 // decoded from the JWT cookie by auth.middleware.ts.
 // Shape matches the JWT sign payload in auth.service.ts.
 
+import { AuthenticatedUser } from '../middlewares/auth.middleware';
+
 declare global {
     namespace Express {
         interface Request {
-            user?: {
-                id: string;
-                phone: string;
-                role: 'CUSTOMER' | 'OWNER' | 'DRIVER' | 'ADMIN';
-            };
+            user?: AuthenticatedUser;
         }
     }
 }

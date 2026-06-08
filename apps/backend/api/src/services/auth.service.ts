@@ -52,7 +52,7 @@ export class AuthService {
         phone: string;
         password: string;
         name: string;
-        role: string;
+        role: 'CUSTOMER' | 'DRIVER' | 'OWNER' | 'ADMIN';
     }) {
         const existingUser = await UserModel.findOne({
             $or: [{ email: data.email }, { phone: data.phone }]

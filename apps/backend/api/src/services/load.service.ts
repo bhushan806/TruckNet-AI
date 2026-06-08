@@ -45,7 +45,7 @@ export class LoadService {
     async getOpenLoads(query: Record<string, any> = {}): Promise<PaginatedResult<any>> {
         const { skip, limit, sort, page } = parsePagination(query);
 
-        const filter = { status: 'OPEN' };
+        const filter = { status: 'OPEN' as const };
         const [data, total] = await Promise.all([
             LoadModel.find(filter)
                 // FIX: was 'name email phone' — removed email/phone to prevent PII leak to all owners

@@ -142,7 +142,7 @@ export class OtpService {
         phone: string,
         otp: string,
         name?: string,
-        role?: string
+        role?: 'CUSTOMER' | 'DRIVER' | 'OWNER' | 'ADMIN'
     ): Promise<{
         user: Record<string, unknown>;
         accessToken: string;
