@@ -167,10 +167,10 @@ export async function getAlertsByUser(userId: string, limit = 20): Promise<any[]
 /**
  * Acknowledge an alert by alertId.
  */
-export async function acknowledgeAlert(alertId: string): Promise<boolean> {
+export async function acknowledgeAlert(alertId: string, userId: string): Promise<boolean> {
     try {
         const result = await AlertModel.findOneAndUpdate(
-            { alertId },
+            { alertId, userId },
             { acknowledged: true, read: true },
             { new: true }
         );

@@ -37,7 +37,7 @@ export const bookRide = async (req: AuthRequest, res: Response, next: NextFuncti
         const data = bookingSchema.parse(req.body);
         const result = await rideService.createBooking({
             ...data,
-            customerId: req.user.id
+            customerId: req.user!.id
         });
         res.status(201).json({ status: 'success', data: result });
     } catch (error) {
@@ -100,7 +100,7 @@ export const getDriverTasks = async (req: AuthRequest, res: Response, next: Next
 
 export const getCustomerRides = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-        const customerId = req.user.id;
+        const customerId = req.user!.id;
         const result = await rideService.getCustomerRides(customerId);
         res.status(200).json({ status: 'success', data: result });
     } catch (error) {

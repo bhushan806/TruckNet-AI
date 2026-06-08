@@ -6,8 +6,8 @@
 //   - SEC:  Memory usage removed from public health endpoint
 //   - SEC:  /uploads static serving replaced with auth-gated endpoint
 
-import express, { CorsOptions } from 'express';
-import cors from 'cors';
+import express from 'express';
+import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
