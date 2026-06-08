@@ -2,7 +2,7 @@
 // SECURITY: All secrets loaded from environment variables.
 // SECURITY: Validated on startup — server refuses to start with missing/invalid config.
 // SECURITY: JWT_SECRET and JWT_REFRESH_SECRET minimum length enforced (prevents weak secrets).
-// SECURITY: FAST2SMS_API_KEY required in production (OTP auth requires SMS).
+
 // SECURITY: CORS_ORIGIN required in production (no wildcard fallback).
 
 import dotenv from 'dotenv';
@@ -41,12 +41,6 @@ const envSchema = z.object({
     OLLAMA_HOST: z.string().optional(),
     HF_API_TOKEN: z.string().optional(),
     AI_ENGINE_URL: z.string().default('http://localhost:8000'),
-
-    // ── SMS Service (required in production for OTP auth) ──
-    // Register at https://www.fast2sms.com — free tier available for India
-    FAST2SMS_API_KEY: isProd
-        ? z.string().min(10, 'FAST2SMS_API_KEY is required in production for OTP authentication')
-        : z.string().optional(),
 
     // ── Redis (optional — rate limiting degrades gracefully to in-memory) ──
     REDIS_URL: z.string().optional(),

@@ -10,13 +10,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AuthService } from '../services/auth.service';
-import { OtpService } from '../services/otp.service';
+
 import { AppError } from '../utils/AppError';
 import { logger } from '../utils/logger';
 import { z } from 'zod';
 
 const authService = new AuthService();
-const otpService = new OtpService();
+
 
 // ── Validation Schemas ──
 
@@ -37,17 +37,6 @@ const registerSchema = z.object({
 const loginSchema = z.object({
     email: z.string().email('Valid email required').toLowerCase().trim(),
     password: z.string().min(1, 'Password is required'),
-});
-
-const sendOtpSchema = z.object({
-    phone: z.string().regex(/^[6-9]\d{9}$/, 'Valid Indian 10-digit phone number required'),
-});
-
-const verifyOtpSchema = z.object({
-    phone: z.string().regex(/^[6-9]\d{9}$/),
-    otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
-    name: z.string().min(2).max(100).trim().optional(),
-    role: z.enum(['DRIVER', 'OWNER', 'CUSTOMER']).optional(),
 });
 
 const forgotPasswordSchema = z.object({
@@ -180,50 +169,6 @@ export const logoutAllDevices = async (req: AuthRequest, res: Response, next: Ne
         res.status(200).json({
             status: 'success',
             message: 'All devices logged out successfully',
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// ── Phone OTP Authentication ──
-
-export const sendOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (!req.body || typeof req.body !== 'object' || Object.keys(req.body).length === 0) {
-            return res.status(400).json({ status: 'error', message: 'Request body is empty or invalid' });
-        }
-
-        const { phone } = sendOtpSchema.parse(req.body);
-        await otpService.sendOtp(phone);
-
-        res.status(200).json({
-            status: 'success',
-            message: 'OTP bhej diya gaya hai. 6-digit code check karo.',
-        });
-    } catch (error) {
-        if (error instanceof z.ZodError) {
-            return res.status(400).json({ status: 'error', message: 'Invalid payload', errors: error.errors });
-        }
-        next(error);
-    }
-};
-
-export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { phone, otp, name, role } = verifyOtpSchema.parse(req.body);
-        const result = await otpService.verifyOtpAndLogin(phone, otp, name, role);
-
-        setAuthCookies(res, result.accessToken, result.refreshToken);
-
-        // FIX C-7: No tokens in body
-        res.status(200).json({
-            status: 'success',
-            message: result.isNewUser ? 'Welcome to TruckNet! 🚛' : 'Login successful!',
-            data: {
-                user: result.user,
-                isNewUser: result.isNewUser,
-            },
         });
     } catch (error) {
         next(error);

@@ -12,13 +12,6 @@ import { rateLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
 
-// ── Rate limiters ──
-const otpSendLimiter = rateLimiter({
-    windowMs: 15 * 60 * 1000,
-    max: 3,
-    message: '15 minute mein maximum 3 OTP request ho sakte hain. Thodi der baad try karo.',
-});
-
 // ── Apply auth rate limiter to all auth routes ──
 router.use(authLimiter);
 
@@ -31,10 +24,6 @@ router.post('/logout-all', protect, authController.logoutAllDevices);
 
 // ── Session verification ──
 router.get('/me', protect, authController.getMe);
-
-// ── Phone OTP Auth ──
-router.post('/send-otp', otpSendLimiter, authController.sendOtp);
-router.post('/verify-otp', authController.verifyOtp);
 
 // ── FIX: GET /drivers — was unauthenticated, now requires OWNER or ADMIN role ──
 router.get('/drivers', protect, authorize('OWNER', 'ADMIN'), authController.getDrivers);
