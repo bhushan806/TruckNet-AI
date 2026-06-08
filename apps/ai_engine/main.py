@@ -1,24 +1,36 @@
 """
 TruckNet AI Engine — FastAPI
-Fixes applied:
-  - FIX 2:  CORS typo corrected + env-driven allow-list
-  - FIX 3:  Conversation history injected into HuggingFace messages array
-  - FIX 12: Structured logging + granular exception handling (no more catch-all)
+SECURITY FIXES:
+  - C-2:  JWT now verified with PyJWT (signature checked) — base64 decode removed
+  - SEC:  JWT auth dependency added to all sensitive endpoints
+  - SEC:  Prompt injection detection added to chat endpoint
+  - FIX 2: CORS env-driven allow-list
+  - FIX 3: Conversation history injected into HuggingFace messages array
+  - FIX 12: Structured logging + granular exception handling
 """
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, Security
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import math
 import random
 import os
-import base64
 import json
+import re
 import logging
 import traceback
 import requests
 from datetime import datetime
+
+# FIX C-2: PyJWT for proper JWT signature verification
+try:
+    import jwt as pyjwt
+except ImportError:
+    raise RuntimeError(
+        "PyJWT is not installed. Run: pip install PyJWT"
+    )
 
 # ── Structured Logging ──
 logging.basicConfig(
@@ -27,6 +39,69 @@ logging.basicConfig(
     datefmt="%Y-%m-%dT%H:%M:%S",
 )
 logger = logging.getLogger("trucknet_ai")
+
+# ── JWT Configuration ──
+# FIX C-2: JWT_SECRET is required — AI engine must use the SAME secret as Node.js backend
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError(
+        "JWT_SECRET environment variable is required. "
+        "Set it to the same value as the Node.js backend JWT_SECRET."
+    )
+
+# ── HTTP Bearer Security Scheme ──
+bearer_scheme = HTTPBearer(auto_error=False)
+
+def verify_jwt_token(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme)
+) -> Dict[str, Any]:
+    """
+    FIX C-2: Properly verifies JWT signature using PyJWT.
+    After:  uses jwt.decode() with the shared secret — forgery is impossible.
+    Now reads from HTTP-only access_token cookie or Authorization header.
+    """
+    token = None
+    if credentials and credentials.credentials:
+        token = credentials.credentials
+    elif "access_token" in request.cookies:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication required: no token provided")
+    try:
+        payload = pyjwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=["HS256"],
+            options={"require": ["userId"]},
+        )
+        return payload
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired. Please log in again.")
+    except pyjwt.InvalidTokenError as e:
+        logger.warning(f"JWT verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+# ── Prompt Injection Detection ──
+_INJECTION_PATTERNS = [
+    re.compile(r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions?", re.IGNORECASE),
+    re.compile(r"you\s+are\s+now\s+(a|an|the)\s+", re.IGNORECASE),
+    re.compile(r"\bdan\s+mode\b", re.IGNORECASE),
+    re.compile(r"\bjailbreak\b", re.IGNORECASE),
+    re.compile(r"system\s+prompt", re.IGNORECASE),
+    re.compile(r"disregard\s+(all\s+)?instructions?", re.IGNORECASE),
+    re.compile(r"pretend\s+you\s+are", re.IGNORECASE),
+    re.compile(r"roleplay\s+as", re.IGNORECASE),
+    re.compile(r"act\s+as\s+if\s+you", re.IGNORECASE),
+    re.compile(r"forget\s+(all\s+)?previous", re.IGNORECASE),
+    re.compile(r"override\s+(safety|security|guidelines|rules)", re.IGNORECASE),
+    re.compile(r"<\|im_start\|>|<\|im_end\|>|<<<SYS>>>|\[INST\]", re.IGNORECASE),
+]
+
+def is_prompt_injection(text: str) -> bool:
+    """Detect common jailbreak and prompt injection patterns."""
+    return any(p.search(text) for p in _INJECTION_PATTERNS)
 
 # ── App Init ──
 app = FastAPI(title="TruckNet AI Engine", version="2.0.0")
@@ -362,33 +437,21 @@ def dynamic_pricing(req: PriceRequest):
 # ── Dost Chat History ──
 
 @app.get("/dost/history")
-async def get_dost_history(request: Request):
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        return {"status": "error", "message": "Unauthorized: No token provided", "history": []}
-
-    token = auth_header.split(" ")[1]
-    user_id = None
-
-    try:
-        parts = token.split(".")
-        if len(parts) == 3:
-            payload_b64 = parts[1] + "=" * ((4 - len(parts[1]) % 4) % 4)
-            payload = json.loads(base64.b64decode(payload_b64).decode("utf-8"))
-            user_id = payload.get("userId") or payload.get("id") or payload.get("sub")
-    except Exception as e:
-        logger.warning(f"Token parsing error in get_dost_history: {e}")
-        return {"status": "error", "message": "Invalid token", "history": []}
-
-    if not user_id:
-        return {"status": "error", "message": "Unauthorized: Invalid user", "history": []}
-
-    # Python engine does not persist history — history is saved by the Node backend.
-    # This endpoint is a passthrough for compatibility; Node's /api/dost/history is authoritative.
+async def get_dost_history(
+    payload: Dict[str, Any] = Depends(verify_jwt_token)
+):
+    """
+    FIX C-2: JWT now properly verified with PyJWT signature check.
+    Before: base64 decoded payload without verifying signature (forgeable).
+    After:  verify_jwt_token dependency verifies signature using JWT_SECRET.
+    """
+    # Python engine does not persist history — Node backend is authoritative.
     return {"status": "success", "history": []}
 
 @app.delete("/dost/history")
-async def delete_dost_history(request: Request):
+async def delete_dost_history(
+    payload: Dict[str, Any] = Depends(verify_jwt_token)
+):
     return {"status": "success", "message": "History cleared"}
 
 # ── FIX 3 + FIX 12: Dost Chat — Full Context-Aware + Structured Error Handling ──

@@ -30,30 +30,8 @@ const api = axios.create({
 const aiApi = axios.create({
   baseURL: process.env.NEXT_PUBLIC_AI_ENGINE_URL,
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: false, // Python AI engine uses Bearer token, not cookies
+  withCredentials: true, // Send HTTP-only cookies on all requests
   timeout: 60_000,
-});
-
-// ── Request Interceptors ──
-// Attach Bearer token from localStorage as fallback (will be removed after cookie migration)
-api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
-});
-
-aiApi.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
 });
 
 // ── Response Interceptors ──
@@ -66,7 +44,6 @@ api.interceptors.response.use(
         // Clear local auth state
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         // Only redirect if not already on the landing or auth pages
         const isOnAuthOrLanding =
           window.location.pathname === '/' ||

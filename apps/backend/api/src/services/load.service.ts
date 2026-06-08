@@ -48,7 +48,8 @@ export class LoadService {
         const filter = { status: 'OPEN' };
         const [data, total] = await Promise.all([
             LoadModel.find(filter)
-                .populate('customerId', 'name email phone')
+                // FIX: was 'name email phone' — removed email/phone to prevent PII leak to all owners
+                .populate('customerId', 'name')
                 .sort(sort)
                 .skip(skip)
                 .limit(limit)

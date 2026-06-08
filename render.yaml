@@ -26,6 +26,8 @@ services:
           name: trucknet-ai-engine
           type: web
           property: url
+      - key: REDIS_URL
+        sync: false
 
   # AI Node Engine (separate service)
   - type: web

@@ -1,8 +1,10 @@
 // ── OTP Service ──
-// FIX 7: Phone + OTP authentication for Indian truck drivers.
+// SECURITY: Phone + OTP authentication for Indian truck drivers.
 // Uses Fast2SMS API (free tier available for India).
-// OTPs are bcrypt-hashed before storage. Max 3 requests per phone per 15 min.
-// Max 5 wrong attempts before lockout.
+// OTPs are bcrypt-hashed before storage.
+// Max 3 requests per phone per 15 min (enforced by route-level limiter + DB count).
+// Max 5 wrong attempts before lockout + immediate OTP deletion.
+// CRITICAL FIX: Removed hardcoded fallback OTP '123456' — production always fails loudly.
 
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -20,10 +22,18 @@ import jwt from 'jsonwebtoken';
 // Indian mobile number regex: starts with 6-9, exactly 10 digits
 const INDIAN_PHONE_REGEX = /^[6-9]\d{9}$/;
 
+// Bcrypt rounds — higher in production for stronger hashing
+const BCRYPT_ROUNDS = env.NODE_ENV === 'production' ? 12 : 10;
+
 export class OtpService {
     // ── Generate a cryptographically random 6-digit OTP ──
     private generateOtp(): string {
         return String(crypto.randomInt(100000, 999999));
+    }
+
+    // ── Mask phone number for safe logging ──
+    private maskPhone(phone: string): string {
+        return phone.replace(/(\d{2})\d{6}(\d{2})/, '$1******$2');
     }
 
     // ── Generate JWT tokens ──
@@ -32,13 +42,15 @@ export class OtpService {
     }
 
     private async generateRefreshToken(userId: string): Promise<string> {
-        const token = jwt.sign({ userId }, env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+        const rawToken = jwt.sign({ userId }, env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+        // Store SHA-256 hash of token — never plaintext
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
         await RefreshTokenModel.create({
-            token,
+            token: hashedToken,
             userId,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         });
-        return token;
+        return rawToken; // Return raw token to client only
     }
 
     // ── Send OTP via Fast2SMS ──
@@ -46,12 +58,17 @@ export class OtpService {
         const apiKey = env.FAST2SMS_API_KEY;
 
         if (!apiKey) {
-            // In development, log the OTP instead of sending (no SMS provider configured)
+            // CRITICAL FIX: In development, log real OTP (never a hardcoded one).
+            // In production, fail loudly — no fallback OTP ever.
             if (env.NODE_ENV !== 'production') {
-                logger.info(`[DEV] OTP for ${phone}: ${otp} (SMS not sent — FAST2SMS_API_KEY not configured)`);
+                logger.warn(`[DEV-ONLY] OTP for ${this.maskPhone(phone)}: ${otp} — SMS not sent (no FAST2SMS_API_KEY)`);
                 return;
             }
-            throw new AppError('SMS service not configured. Set FAST2SMS_API_KEY.', 503);
+            // Production: throw so the user knows SMS is broken, not silently bypass auth
+            throw new AppError(
+                'SMS service is not configured. Please contact support or try email login.',
+                503
+            );
         }
 
         try {
@@ -66,15 +83,18 @@ export class OtpService {
             });
 
             if (!response.data?.return) {
-                logger.error('Fast2SMS API returned failure', { phone, response: response.data });
-                throw new AppError('SMS bhejne mein problem hui. Dobara try karo.', 503);
+                logger.error('Fast2SMS API returned failure', {
+                    phone: this.maskPhone(phone),
+                    response: response.data,
+                });
+                throw new AppError('Failed to send OTP. Please try again.', 503);
             }
 
-            logger.info('OTP SMS sent', { phone: phone.replace(/\d(?=\d{4})/, '*') });
+            logger.info('OTP SMS sent successfully', { phone: this.maskPhone(phone) });
         } catch (error: any) {
             if (error instanceof AppError) throw error;
             logger.error('Fast2SMS call failed', { error: error.message });
-            throw new AppError('SMS service temporarily unavailable. Thodi der mein try karo.', 503);
+            throw new AppError('SMS service temporarily unavailable. Please try again.', 503);
         }
     }
 
@@ -97,23 +117,15 @@ export class OtpService {
             );
         }
 
-        let otp = this.generateOtp();
-        let isSmsFailed = false;
+        const otp = this.generateOtp();
 
-        try {
-            await this.sendSms(phone, otp);
-        } catch (error) {
-            // CRITICAL FIX: Hackathon/Production Fallback
-            // If SMS fails due to missing API key, exhausted balance, or network error,
-            // DO NOT throw 503 and block the user. Fallback to a hardcoded OTP.
-            logger.warn('SMS failed, falling back to default OTP 123456 to unblock login', { phone });
-            otp = '123456';
-            isSmsFailed = true;
-        }
+        // CRITICAL FIX: In production, SMS failure = hard failure. No fallback OTP.
+        // In development, sendSms logs the OTP to console and returns without throwing.
+        await this.sendSms(phone, otp);
 
-        const hashedOtp = await bcrypt.hash(otp, 10);
+        const hashedOtp = await bcrypt.hash(otp, BCRYPT_ROUNDS);
 
-        // Delete any existing OTPs for this phone
+        // Delete any existing OTPs for this phone (single active OTP policy)
         await OtpModel.deleteMany({ phone });
 
         // Store hashed OTP with TTL of 10 minutes
@@ -123,8 +135,6 @@ export class OtpService {
             expiresAt: new Date(Date.now() + 10 * 60 * 1000),
             attempts: 0,
         });
-        
-        // Return context for controllers if needed (void here, but successfully resolves)
     }
 
     // ── Verify OTP and log user in (creates account if new user) ──
@@ -154,7 +164,7 @@ export class OtpService {
             throw new AppError('OTP expire ho gaya. Dobara bhejne ki koshish karo.', 400);
         }
 
-        // Max 5 attempts
+        // Max 5 attempts — delete on exhaustion to prevent timing attacks
         if (otpDoc.attempts >= 5) {
             await OtpModel.deleteOne({ phone });
             throw new AppError('Bahut zyada galat OTP. Dobara OTP request karo.', 429);
@@ -172,7 +182,7 @@ export class OtpService {
             );
         }
 
-        // OTP verified — delete it immediately (single-use)
+        // OTP verified — delete immediately (single-use, prevents replay attacks)
         await OtpModel.deleteOne({ phone });
 
         // Find or create user
@@ -184,13 +194,12 @@ export class OtpService {
             const resolvedName = name?.trim() || `User_${phone.slice(-4)}`;
             const resolvedRole = role || 'CUSTOMER';
 
-            // Generate a random password placeholder (user won't use it — OTP only)
-            const bcrypt = await import('bcrypt');
-            const dummyPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 10);
+            // Generate a cryptographically random password placeholder (user uses OTP only)
+            const dummyPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), BCRYPT_ROUNDS);
 
             userDoc = await UserModel.create({
                 phone,
-                email: `${phone}@trucknet.phone`, // placeholder email for phone-only users
+                email: `otp_${phone}@trucknet.internal`, // Internal placeholder, never shown
                 password: dummyPassword,
                 name: resolvedName,
                 role: resolvedRole,
@@ -202,7 +211,7 @@ export class OtpService {
                 if (resolvedRole === 'DRIVER') {
                     await DriverProfileModel.create({
                         userId: userDoc._id,
-                        licenseNumber: `TEMP-${Date.now()}`,
+                        licenseNumber: `PENDING-${Date.now()}`, // Must be updated in profile setup
                         experienceYears: 0,
                         rating: 5.0,
                         totalTrips: 0,
@@ -214,10 +223,15 @@ export class OtpService {
                     });
                 }
             } catch (profileError) {
-                logger.error('Failed to create profile for OTP user', { userId: userDoc._id });
+                logger.error('Failed to create profile for OTP user', {
+                    userId: (userDoc._id as any).toString(),
+                });
             }
 
-            logger.info('New user registered via OTP', { userId: (userDoc._id as any).toString(), role: resolvedRole });
+            logger.info('New user registered via OTP', {
+                userId: (userDoc._id as any).toString(),
+                role: resolvedRole,
+            });
         }
 
         const accessToken = this.generateAccessToken((userDoc._id as any).toString());

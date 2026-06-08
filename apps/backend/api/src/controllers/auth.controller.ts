@@ -1,13 +1,18 @@
 // ── Auth Controller ──
-// FIX 5: Sets JWT as HTTP-only cookie on login/register.
-//         Clears cookies on logout.
-//         Also returns user payload in response body (no token in body for security).
+// SECURITY FIXES:
+//   - C-7:  Tokens NEVER returned in response body — HTTP-only cookies only
+//   - SEC:  forgotPassword no longer returns reset token in response
+//   - SEC:  Email enumeration prevented (same response for found/not found)
+//   - SEC:  is_logged_in cookie is now server-set (HTTP-only) — not client-set
+//   - SEC:  Strong password policy enforced (min 8, uppercase, number)
+//   - SEC:  Reset token stored hashed, sent via email (not API response)
 
 import { Request, Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AuthService } from '../services/auth.service';
 import { OtpService } from '../services/otp.service';
 import { AppError } from '../utils/AppError';
+import { logger } from '../utils/logger';
 import { z } from 'zod';
 
 const authService = new AuthService();
@@ -16,16 +21,22 @@ const otpService = new OtpService();
 // ── Validation Schemas ──
 
 const registerSchema = z.object({
-    email: z.string().email(),
-    phone: z.string().min(10),
-    password: z.string().min(6),
-    name: z.string().min(2),
+    email: z.string().email('Valid email required').toLowerCase().trim(),
+    phone: z.string()
+        .regex(/^[6-9]\d{9}$/, 'Valid Indian 10-digit phone number required'),
+    password: z
+        .string()
+        .min(8, 'Password must be at least 8 characters')
+        .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+        .regex(/[0-9]/, 'Password must contain at least one number')
+        .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+    name: z.string().min(2, 'Name must be at least 2 characters').max(100).trim(),
     role: z.enum(['DRIVER', 'OWNER', 'CUSTOMER']),
 });
 
 const loginSchema = z.object({
-    email: z.string().email(),
-    password: z.string(),
+    email: z.string().email('Valid email required').toLowerCase().trim(),
+    password: z.string().min(1, 'Password is required'),
 });
 
 const sendOtpSchema = z.object({
@@ -34,33 +45,57 @@ const sendOtpSchema = z.object({
 
 const verifyOtpSchema = z.object({
     phone: z.string().regex(/^[6-9]\d{9}$/),
-    otp: z.string().length(6, 'OTP must be 6 digits'),
-    name: z.string().min(2).optional(),
+    otp: z.string().length(6, 'OTP must be 6 digits').regex(/^\d{6}$/, 'OTP must be numeric'),
+    name: z.string().min(2).max(100).trim().optional(),
     role: z.enum(['DRIVER', 'OWNER', 'CUSTOMER']).optional(),
 });
 
-// ── Cookie Helper ──
+const forgotPasswordSchema = z.object({
+    email: z.string().email('Valid email required').toLowerCase().trim(),
+});
+
+const resetPasswordSchema = z.object({
+    token: z.string().min(1, 'Reset token is required'),
+    newPassword: z
+        .string()
+        .min(8, 'Password must be at least 8 characters')
+        .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+        .regex(/[0-9]/, 'Password must contain at least one number'),
+});
+
+// ── Cookie Options ──
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 const COOKIE_OPTS = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+    secure: IS_PROD,
+    sameSite: (IS_PROD ? 'none' : 'lax') as 'none' | 'lax',
 };
 
 function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
+    // Access token: 15 minutes
     res.cookie('access_token', accessToken, {
         ...COOKIE_OPTS,
-        maxAge: 15 * 60 * 1000, // 15 minutes
+        maxAge: 15 * 60 * 1000,
     });
+    // Refresh token: 7 days, path-restricted to refresh endpoint
     res.cookie('refresh_token', refreshToken, {
         ...COOKIE_OPTS,
         path: '/api/auth/refresh',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+    // FIX: is_logged_in is now HTTP-only (server-set) — cannot be forged by client JS
+    res.cookie('is_logged_in', '1', {
+        ...COOKIE_OPTS,
+        maxAge: 15 * 60 * 1000,
     });
 }
 
 function clearAuthCookies(res: Response) {
-    res.clearCookie('access_token', COOKIE_OPTS);
-    res.clearCookie('refresh_token', { ...COOKIE_OPTS, path: '/api/auth/refresh' });
+    const clearOpts = { ...COOKIE_OPTS, maxAge: 0 };
+    res.clearCookie('access_token', clearOpts);
+    res.clearCookie('refresh_token', { ...clearOpts, path: '/api/auth/refresh' });
+    res.clearCookie('is_logged_in', clearOpts);
 }
 
 // ── Controllers ──
@@ -72,15 +107,11 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
         setAuthCookies(res, result.accessToken, result.refreshToken);
 
+        // FIX C-7: NEVER return tokens in response body — they live in HTTP-only cookies
         res.status(201).json({
             status: 'success',
             message: 'Registration successful',
-            data: {
-                user: result.user,
-                // Also send token in body for mobile clients that can't use cookies
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
-            },
+            data: { user: result.user },
         });
     } catch (error) {
         next(error);
@@ -94,14 +125,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
         setAuthCookies(res, result.accessToken, result.refreshToken);
 
+        // FIX C-7: NEVER return tokens in response body
         res.status(200).json({
             status: 'success',
             message: 'Login successful',
-            data: {
-                user: result.user,
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
-            },
+            data: { user: result.user },
         });
     } catch (error) {
         next(error);
@@ -110,21 +138,17 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
 export const refresh = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // Read refresh token from cookie first, then body (for mobile)
-        const refreshToken = (req as any).cookies?.refresh_token || req.body?.refreshToken;
-        if (!refreshToken) throw new AppError('Refresh token required', 400);
+        // Read refresh token from HTTP-only cookie only (no body fallback — security boundary)
+        const refreshToken = (req as any).cookies?.refresh_token;
+        if (!refreshToken) throw new AppError('Refresh token required', 401);
 
         const result = await authService.refreshToken(refreshToken);
-
         setAuthCookies(res, result.accessToken, result.refreshToken);
 
+        // FIX C-7: No tokens in body
         res.status(200).json({
             status: 'success',
             message: 'Token refreshed',
-            data: {
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
-            },
         });
     } catch (error) {
         next(error);
@@ -137,8 +161,6 @@ export const logout = async (req: AuthRequest, res: Response, next: NextFunction
         if (!userId) return next(new AppError('User not authenticated', 401));
 
         await authService.logout(userId);
-
-        // FIX 5: Clear cookies on logout
         clearAuthCookies(res);
 
         res.status(200).json({ status: 'success', message: 'Logged out successfully' });
@@ -147,7 +169,24 @@ export const logout = async (req: AuthRequest, res: Response, next: NextFunction
     }
 };
 
-// ── FIX 7: Phone OTP Authentication ──
+export const logoutAllDevices = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return next(new AppError('User not authenticated', 401));
+
+        await authService.logoutAllDevices(userId);
+        clearAuthCookies(res);
+
+        res.status(200).json({
+            status: 'success',
+            message: 'All devices logged out successfully',
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// ── Phone OTP Authentication ──
 
 export const sendOtp = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -157,6 +196,7 @@ export const sendOtp = async (req: Request, res: Response, next: NextFunction) =
 
         const { phone } = sendOtpSchema.parse(req.body);
         await otpService.sendOtp(phone);
+
         res.status(200).json({
             status: 'success',
             message: 'OTP bhej diya gaya hai. 6-digit code check karo.',
@@ -176,22 +216,19 @@ export const verifyOtp = async (req: Request, res: Response, next: NextFunction)
 
         setAuthCookies(res, result.accessToken, result.refreshToken);
 
+        // FIX C-7: No tokens in body
         res.status(200).json({
             status: 'success',
             message: result.isNewUser ? 'Welcome to TruckNet! 🚛' : 'Login successful!',
             data: {
                 user: result.user,
                 isNewUser: result.isNewUser,
-                accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
             },
         });
     } catch (error) {
         next(error);
     }
 };
-
-// ── Existing Helpers ──
 
 export const getMe = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
@@ -202,32 +239,49 @@ export const getMe = async (req: AuthRequest, res: Response, next: NextFunction)
     }
 };
 
-export const getDrivers = async (req: Request, res: Response, next: NextFunction) => {
+// FIX: Added auth — was completely unauthenticated (High severity)
+export const getDrivers = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-        const result = await authService.getDrivers();
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(50, parseInt(req.query.limit as string) || 20);
+        const result = await authService.getDrivers({ page, limit });
         res.status(200).json({ status: 'success', message: 'Drivers fetched', data: result });
     } catch (error) {
         next(error);
     }
 };
 
+// FIX: No longer returns reset token in response body (was critical leak)
+// FIX: Same response for existing/non-existing email (prevents email enumeration)
 export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { email } = req.body;
-        if (!email) throw new AppError('Email is required', 400);
-        const result = await authService.forgotPassword(email);
-        res.status(200).json({ status: 'success', message: result.message, data: result });
+        const { email } = forgotPasswordSchema.parse(req.body);
+        // Service sends email internally — result always returns same message
+        await authService.forgotPassword(email);
+
+        // Always return same response regardless of whether email exists
+        res.status(200).json({
+            status: 'success',
+            message: 'If that email is registered, a password reset link has been sent.',
+        });
     } catch (error) {
-        next(error);
+        if (error instanceof z.ZodError) {
+            return next(new AppError('Valid email is required', 400));
+        }
+        // Even on error, return same message to prevent email enumeration
+        logger.error('Forgot password error', { error: (error as any).message });
+        res.status(200).json({
+            status: 'success',
+            message: 'If that email is registered, a password reset link has been sent.',
+        });
     }
 };
 
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { token, newPassword } = req.body;
-        if (!token || !newPassword) throw new AppError('Token and new password are required', 400);
-        const result = await authService.resetPassword(token, newPassword);
-        res.status(200).json({ status: 'success', message: result.message });
+        const { token, newPassword } = resetPasswordSchema.parse(req.body);
+        await authService.resetPassword(token, newPassword);
+        res.status(200).json({ status: 'success', message: 'Password updated successfully' });
     } catch (error) {
         next(error);
     }

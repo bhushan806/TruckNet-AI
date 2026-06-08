@@ -1,9 +1,12 @@
 // ── TruckNet API — Express Application Entry Point ──
-// FIX 5:  cookie-parser added for HTTP-only JWT cookies
-// FIX 13: MongoDB reconnect logic in mongoose.ts (see that file)
-// FIX 14: Security hardening — helmet CSP, dual rate limiters
+// SECURITY FIXES APPLIED:
+//   - C-3:  CORS now uses explicit allowlist (no more origin:true)
+//   - C-7:  Tokens removed from response body (HTTP-only cookies only)
+//   - SEC:  Body limit tightened to 100kb (was 10mb — DoS vector)
+//   - SEC:  Memory usage removed from public health endpoint
+//   - SEC:  /uploads static serving replaced with auth-gated endpoint
 
-import express from 'express';
+import express, { CorsOptions } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -21,10 +24,12 @@ import { rateLimiter } from './middlewares/rateLimiter';
 
 process.on('uncaughtException', (error) => {
     logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+    // Give logger time to flush, then crash — uncaught exceptions are unrecoverable
+    setTimeout(() => process.exit(1), 1000);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection', { reason });
+process.on('unhandledRejection', (reason) => {
+    logger.error('Unhandled Rejection', { reason: String(reason) });
 });
 
 // Import Routes
@@ -45,18 +50,17 @@ import predictiveRoutes from './routes/predictive.routes';
 
 import { connectMongoose } from './config/mongoose';
 import { initSocket } from './config/socket';
-import path from 'path';
 
-// Connect Mongoose (FIX 13: resilient connection with auto-reconnect)
+// Connect Mongoose (resilient with auto-reconnect)
 connectMongoose();
 
 const app = express();
 const httpServer = createServer(app);
 
-// Initialize Socket.io
+// Initialize Socket.io (JWT-authenticated — see config/socket.ts)
 initSocket(httpServer);
 
-// ── FIX 14: Security Headers (Helmet) ──
+// ── FIX C-3: Security Headers (Helmet with tightened CSP) ──
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -64,45 +68,69 @@ app.use(helmet({
             scriptSrc: ["'self'"],
             connectSrc: [
                 "'self'",
-                env.CORS_ORIGIN,
-                'https://trucknet-ai-engine.onrender.com',
+                ...(env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map(o => o.trim()) : []),
             ],
             imgSrc: ["'self'", 'data:', 'https:'],
             styleSrc: ["'self'", "'unsafe-inline'"],
             fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+            frameAncestors: ["'none'"], // Clickjacking protection
+            objectSrc: ["'none'"],
         },
     },
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginResourcePolicy: { policy: 'same-origin' }, // Tightened from cross-origin
+    hsts: {
+        maxAge: 63072000, // 2 years
+        includeSubDomains: true,
+        preload: true,
+    },
 }));
 
-// ── CORS Configuration & Preflight Handling ──
-const allowedOrigins = [
-    'https://trucknet-frontend.vercel.app',
-    'http://localhost:3000'
-];
+// ── FIX C-3: CORS — Explicit allowlist instead of origin:true ──
+// origin:true was reflecting any Origin header → defeats HTTP-only cookie security
+const _rawCorsOrigins = (env.CORS_ORIGIN || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean);
 
-const corsOptions = {
-    origin: true, // Dynamically reflects the request's Origin, preventing CORS errors across Verel previews/local
+// Always allow localhost in development
+if (env.NODE_ENV !== 'production') {
+    _rawCorsOrigins.push('http://localhost:3000', 'http://localhost:3001');
+}
+
+const ALLOWED_ORIGINS = new Set<string>(_rawCorsOrigins);
+
+logger.info('CORS allowlist configured', { origins: [...ALLOWED_ORIGINS] });
+
+const corsOptions: CorsOptions = {
+    origin: (origin, callback) => {
+        // Allow same-origin requests (no Origin header) and explicitly allowlisted origins
+        if (!origin || ALLOWED_ORIGINS.has(origin)) {
+            callback(null, true);
+        } else {
+            logger.warn('CORS rejected origin', { origin });
+            callback(new Error(`CORS policy: origin '${origin}' is not allowed`));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    maxAge: 86400, // Cache preflight for 24 hours
 };
 
-// 1. Setup CORS middleware
 app.use(cors(corsOptions));
-
-// 2. Global OPTIONS Preflight Handler (proper CORS handling)
 app.options('*', cors(corsOptions));
 
-// ── FIX 5: Cookie Parser ──
-// Must come BEFORE auth middleware reads cookies
+// ── Cookie Parser (must come BEFORE auth middleware reads cookies) ──
 app.use(cookieParser());
 
 // ── Logging ──
+// In production use 'combined' format (Apache CLF) — suitable for log aggregators
 app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
-// ── Body Parsing ──
-app.use(express.json({ limit: '10mb' }));
+// ── Body Parsing — Tightened limits to prevent DoS ──
+// FIX: Was 10mb — far too large for JSON API. 100kb handles all legitimate payloads.
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // ── Request Timing Logs (Slow Endpoint Detection) ──
 app.use((req, res, next) => {
@@ -110,35 +138,32 @@ app.use((req, res, next) => {
     res.on('finish', () => {
         const duration = Date.now() - start;
         if (duration > 1000) {
-            logger.warn(`Slow request detected: ${req.method} ${req.originalUrl} took ${duration}ms`);
+            logger.warn('Slow request detected', {
+                method: req.method,
+                url: req.originalUrl,
+                duration: `${duration}ms`,
+                status: res.statusCode,
+            });
         }
     });
     next();
 });
 
-// ── Health Checks ──
-app.get('/health', (req, res) => {
-    res.status(200).send("OK");
+// ── Public Health Checks (before rate limiter) ──
+// FIX: Removed process.memoryUsage() from public endpoint — leaks server internals
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
 });
 
-app.get('/api/health/complete', async (_req, res) => {
-    const mongoose = (await import('mongoose')).default;
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        services: {
-            database: mongoose.connection.readyState === 1 ? 'up' : 'down',
-            uptime: Math.floor(process.uptime()),
-            memory: process.memoryUsage(),
-        },
-    });
+app.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ── FIX 14: Global Rate Limiter (100 req / 15 min per IP) ──
+// ── Global Rate Limiter (100 req / 15 min per IP) ──
 const globalLimiter = rateLimiter({
     windowMs: 15 * 60 * 1000,
     max: 100,
-    message: 'Too many requests from this IP. Thodi der mein try karo.',
+    message: 'Too many requests from this IP. Please try again later.',
 });
 app.use(globalLimiter);
 
@@ -148,10 +173,9 @@ app.use(requestTimeout(30_000));
 // ── Response Sanitizer ──
 app.use(sanitizeResponse);
 
-// ── Static Uploads ──
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
-
-// (Health endpoints moved above rate limiter)
+// ── FIX: Removed public static uploads serving ──
+// Before: app.use('/uploads', express.static(...)) — NO access control
+// After: Uploads served via GET /api/documents/file/:filename (auth-gated in document.routes.ts)
 
 // ── API Routes ──
 app.use('/api/auth', authRoutes);
@@ -181,7 +205,7 @@ app.use(errorHandler);
 // ── Start Server ──
 const PORT = env.PORT;
 httpServer.listen(PORT, () => {
-    logger.info(`Server running on port ${PORT}`, { environment: env.NODE_ENV });
+    logger.info('Server running', { port: PORT, environment: env.NODE_ENV });
 
     // Start Predictive Intelligence Monitoring (non-blocking)
     import('./ai/monitoring.service').then(({ monitoringService }) => {
@@ -203,8 +227,8 @@ setInterval(async () => {
 }, 15 * 60 * 1000);
 
 // ── Graceful Shutdown ──
-const shutdown = async () => {
-    logger.info('Shutting down gracefully...');
+const shutdown = async (signal: string) => {
+    logger.info(`${signal} received — shutting down gracefully...`);
     httpServer.close(async () => {
         logger.info('HTTP server closed');
         try {
@@ -216,11 +240,13 @@ const shutdown = async () => {
         }
         process.exit(0);
     });
+
+    // Force exit after 10s if graceful shutdown stalls
     setTimeout(() => {
-        logger.error('Forced shutdown after timeout');
+        logger.error('Forced shutdown — graceful shutdown timed out');
         process.exit(1);
-    }, 10000);
+    }, 10_000);
 };
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));

@@ -167,6 +167,29 @@ interface DostResponse {
 }
 
 // ── Language Detection ──
+// ── Prompt Injection Detection ──
+// Detects common jailbreak patterns and injection attempts.
+// Returns true if the message is likely a prompt injection attack.
+const INJECTION_PATTERNS: RegExp[] = [
+    /ignore\s+(all\s+)?(previous|prior|above)\s+instructions?/i,
+    /you\s+are\s+now\s+(a|an|the)\s+/i,
+    /\bdan\s+mode\b/i,
+    /\bjailbreak\b/i,
+    /system\s+prompt/i,
+    /disregard\s+(all\s+)?instructions?/i,
+    /pretend\s+you\s+are/i,
+    /roleplay\s+as/i,
+    /act\s+as\s+if\s+you/i,
+    /forget\s+(all\s+)?previous/i,
+    /\bDO ANYTHING NOW\b/i,
+    /override\s+(safety|security|guidelines|rules)/i,
+    /<\|im_start\|>|<\|im_end\|>|<<<SYS>>>|\[INST\]/i, // Template injection markers
+];
+
+function isPromptInjection(text: string): boolean {
+    return INJECTION_PATTERNS.some(pattern => pattern.test(text));
+}
+
 function detectLanguage(text: string): string {
     // Check for Devanagari characters (Hindi)
     const hindiPattern = /[\u0900-\u097F]/;
@@ -414,6 +437,22 @@ async function fetchPredictiveData(module: string, message: string): Promise<Pre
 // ── Main Chat Function (Enhanced with Structured AI Data) ──
 export async function chat(params: DostChatParams): Promise<DostResponse> {
     const { message, role, userId, conversationHistory = [] } = params;
+
+    // ── FIX: Prompt injection guard ──
+    // Blocks jailbreak attempts before any LLM call is made
+    if (isPromptInjection(message)) {
+        logger.warn('Prompt injection attempt detected', {
+            userId,
+            messagePreview: message.slice(0, 50),
+        });
+        return {
+            reply: 'Maaf karo, yeh request process nahi kar sakta. 🙏 Koi aur sawaal ho toh zaroor puchho!',
+            language: detectLanguage(message),
+            module: 'general',
+            actions: ['🚛 Book Truck', '📦 Find Load', '📍 Track Order'],
+            data: {},
+        };
+    }
 
     let databaseContext: object = {};
     let roleInstruction: string | undefined;
