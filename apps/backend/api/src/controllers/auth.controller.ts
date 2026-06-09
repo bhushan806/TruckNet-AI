@@ -73,18 +73,13 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
         path: '/api/auth/refresh',
         maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    // FIX: is_logged_in is now HTTP-only (server-set) — cannot be forged by client JS
-    res.cookie('is_logged_in', '1', {
-        ...COOKIE_OPTS,
-        maxAge: 15 * 60 * 1000,
-    });
+    // The frontend manually sets a non-HttpOnly is_logged_in cookie for Next.js middleware.
 }
 
 function clearAuthCookies(res: Response) {
     const clearOpts = { ...COOKIE_OPTS, maxAge: 0 };
     res.clearCookie('access_token', clearOpts);
     res.clearCookie('refresh_token', { ...clearOpts, path: '/api/auth/refresh' });
-    res.clearCookie('is_logged_in', clearOpts);
 }
 
 // ── Controllers ──

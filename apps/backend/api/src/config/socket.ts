@@ -68,9 +68,21 @@ export const initSocket = (httpServer: HttpServer) => {
     // Every socket connection MUST present a valid JWT — no anonymous connections
     io.use((socket, next) => {
         // Try handshake auth object (modern clients) first, then Authorization header
-        const rawToken =
+        let rawToken =
             socket.handshake.auth?.token ||
             socket.handshake.headers?.authorization?.replace('Bearer ', '');
+
+        // Fallback to HTTP-only cookie if no explicit token is provided
+        if (!rawToken && socket.handshake.headers.cookie) {
+            const cookies = socket.handshake.headers.cookie.split(';').reduce((res: any, item: string) => {
+                const data = item.trim().split('=');
+                if (data.length === 2) {
+                    res[data[0]] = data[1];
+                }
+                return res;
+            }, {});
+            rawToken = cookies.access_token;
+        }
 
         if (!rawToken) {
             logger.warn('Socket connection rejected: no token', { socketId: socket.id });

@@ -35,27 +35,68 @@ const aiApi = axios.create({
 });
 
 // ── Response Interceptors ──
+
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
     const status = error.response?.status;
-    if (status === 401) {
-      if (typeof window !== 'undefined') {
-        // Clear local auth state
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        // Only redirect if not already on the landing or auth pages
-        const isOnAuthOrLanding =
-          window.location.pathname === '/' ||
-          window.location.pathname.startsWith('/auth');
-        if (!isOnAuthOrLanding) {
-          // Show toast before redirect to landing page
-          import('./toast').then(({ notify }) => {
-            notify.error('Your session has expired. Please log in again. 🔐');
-          });
-          // Redirect to landing page, not login page
-          setTimeout(() => { window.location.href = '/'; }, 1200);
+
+    if (status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/login' && originalRequest.url !== '/auth/refresh') {
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(() => {
+          return api(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {}, { withCredentials: true });
+        isRefreshing = false;
+        processQueue(null);
+        return api(originalRequest);
+      } catch (refreshError) {
+        isRefreshing = false;
+        processQueue(refreshError);
+        
+        if (typeof window !== 'undefined') {
+          // Clear local auth state
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          
+          // Only redirect if not already on the landing or auth pages
+          const isOnAuthOrLanding =
+            window.location.pathname === '/' ||
+            window.location.pathname.startsWith('/auth');
+          if (!isOnAuthOrLanding) {
+            import('./toast').then(({ notify }) => {
+              notify.error('Your session has expired. Please log in again. 🔐');
+            });
+            setTimeout(() => { window.location.href = '/'; }, 1200);
+          }
         }
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);
