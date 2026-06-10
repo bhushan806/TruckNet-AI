@@ -42,9 +42,10 @@ export default function LoginPage() {
         setSubmitting(true);
         try {
             const res = await api.post('/auth/login', { email: email.trim(), password });
-            const { user: userData, accessToken } = res.data.data;
-            // login() sets state, sets cookie, and redirects to the correct dashboard
-            login(userData, accessToken);
+            // NOTE: accessToken is in an HTTP-only cookie set by the backend — NOT in the body.
+            const { user: userData } = res.data.data;
+            // login() sets state, sets indicator cookie, and redirects to the correct dashboard
+            login(userData);
         } catch (err: any) {
             const msg = err.response?.data?.message || 'Invalid email or password. Please try again.';
             setError(msg);

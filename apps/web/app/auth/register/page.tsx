@@ -33,10 +33,11 @@ export default function RegisterPage() {
 
         try {
             const res = await api.post('/auth/register', formData);
-            const { user, accessToken } = res.data.data;
+            // NOTE: accessToken is in an HTTP-only cookie set by the backend — NOT in the body.
+            const { user } = res.data.data;
 
-            // login() sets state, sets cookie, and automatically redirects to correct dashboard
-            login(user, accessToken);
+            // login() sets state, sets indicator cookie, and automatically redirects to correct dashboard
+            login(user);
 
         } catch (err: any) {
             setError(err.response?.data?.message || 'Registration failed');

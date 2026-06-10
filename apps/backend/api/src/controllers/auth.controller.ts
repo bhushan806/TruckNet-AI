@@ -77,9 +77,19 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
 }
 
 function clearAuthCookies(res: Response) {
-    const clearOpts = { ...COOKIE_OPTS, maxAge: 0 };
-    res.clearCookie('access_token', clearOpts);
-    res.clearCookie('refresh_token', { ...clearOpts, path: '/api/auth/refresh' });
+    // IMPORTANT: clearCookie options must exactly match the original Set-Cookie options
+    // (domain, path, sameSite, secure) or the browser will not delete the cookie.
+    res.clearCookie('access_token', {
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: IS_PROD ? 'none' : 'lax',
+    });
+    res.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: IS_PROD,
+        sameSite: IS_PROD ? 'none' : 'lax',
+        path: '/api/auth/refresh',
+    });
 }
 
 // ── Controllers ──

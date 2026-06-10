@@ -61,6 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
         }
 
+        // Only verify session via /auth/me if there's a plausible active session.
+        // The is_logged_in cookie is a non-HttpOnly indicator set client-side on login.
+        // Skipping this call when not logged in avoids unnecessary 401s hitting the backend.
+        const hasSessionIndicator = document.cookie.includes('is_logged_in=true');
+        if (!hasSessionIndicator && !storedUser) {
+            setLoading(false);
+            return;
+        }
+
         // Verify session is still valid by calling /auth/me
         // This handles the case where the cookie expired between visits.
         api.get('/auth/me')
@@ -74,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .catch(() => {
                 // Cookie expired or invalid — clear cached user profile
                 localStorage.removeItem('user');
+                document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 setUser(null);
             })
             .finally(() => setLoading(false));

@@ -17,10 +17,7 @@ services:
       - key: JWT_REFRESH_SECRET
         sync: false
       - key: CORS_ORIGIN
-        fromService:
-          name: trucknet-frontend
-          type: web
-          property: url
+        value: https://trucknet-ai.onrender.com
       - key: AI_ENGINE_URL
         fromService:
           name: trucknet-ai-engine
@@ -47,14 +44,11 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: CORS_ORIGIN
-        fromService:
-          name: trucknet-frontend
-          type: web
-          property: url
+        value: https://trucknet-ai.onrender.com
 
   # Frontend Service (Next.js)
   - type: web
-    name: trucknet-frontend
+    name: trucknet-ai
     rootDir: apps/web
     runtime: node
     plan: starter
@@ -64,12 +58,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: trucknet-api
-          type: web
-          property: url
+        value: https://trucknet-api.onrender.com/api
+        # /api suffix REQUIRED — Render service name: trucknet-api
       - key: NEXT_PUBLIC_AI_ENGINE_URL
-        fromService:
-          name: trucknet-ai-engine
-          type: web
-          property: url
+        value: https://trucknet-ai-engine.onrender.com/api
+        # /api suffix REQUIRED — Render service name: trucknet-ai-engine
