@@ -1,7 +1,7 @@
 services:
   # Main API Service
   - type: web
-    name: trucknet-api
+    name: trucknet-ai   # Render service slug (URL: https://trucknet-ai.onrender.com)
     rootDir: apps/backend/api
     runtime: node
     plan: starter
@@ -17,7 +17,7 @@ services:
       - key: JWT_REFRESH_SECRET
         sync: false
       - key: CORS_ORIGIN
-        value: https://trucknet-ai.onrender.com
+        value: https://truck-net-ai-web.vercel.app
       - key: AI_ENGINE_URL
         fromService:
           name: trucknet-ai-engine
@@ -44,7 +44,7 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: CORS_ORIGIN
-        value: https://trucknet-ai.onrender.com
+        value: https://truck-net-ai-web.vercel.app
 
   # Frontend Service (Next.js)
   - type: web
@@ -58,8 +58,8 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        value: https://trucknet-api.onrender.com/api
-        # /api suffix REQUIRED — Render service name: trucknet-api
+        value: https://trucknet-ai.onrender.com/api
+        # Backend API is at trucknet-ai.onrender.com (Express, returns JSON 404 on /)
       - key: NEXT_PUBLIC_AI_ENGINE_URL
         value: https://trucknet-ai-engine.onrender.com/api
         # /api suffix REQUIRED — Render service name: trucknet-ai-engine

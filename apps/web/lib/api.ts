@@ -3,20 +3,23 @@ import axios from 'axios';
 // ── Startup Guards ──
 // NEXT_PUBLIC_ variables are baked at build time. If missing, ALL AI requests
 // will silently route to the frontend domain and return 404.
+// We warn (not throw) so local builds without .env.local don't fail during prerendering.
+// In Vercel production, these are always set via environment variables.
 if (typeof window === 'undefined') {
   if (!process.env.NEXT_PUBLIC_API_URL) {
-    throw new Error(
+    console.warn(
       '[TruckNet] NEXT_PUBLIC_API_URL is not defined. ' +
       'Add it to Vercel environment variables and redeploy.'
     );
   }
   if (!process.env.NEXT_PUBLIC_AI_ENGINE_URL) {
-    throw new Error(
+    console.warn(
       '[TruckNet] NEXT_PUBLIC_AI_ENGINE_URL is not defined. ' +
       'Add it to Vercel environment variables (Production + Preview + Development) and redeploy.'
     );
   }
 }
+
 
 // ── Axios Instances ──
 // Timeout: 60s to handle Render free-tier cold starts (~50s)
