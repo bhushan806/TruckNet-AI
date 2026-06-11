@@ -1,7 +1,8 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { DriverService } from '../services/driver.service';
-import User from '../models/User';
+import { UserModel } from '../models/mongoose/User';
+import { DriverProfileModel } from '../models/mongoose/DriverProfile';
 import { z } from 'zod';
 
 const driverService = new DriverService();
@@ -32,15 +33,26 @@ export const updateProfile = async (req: AuthRequest, res: Response, next: NextF
 
         const data = updateProfileSchema.parse(req.body);
 
-        // Update name/phone on the User model
+        // Update name/phone on the User document
         if (data.name || data.phone) {
-            await User.findByIdAndUpdate(userId, {
+            await UserModel.findByIdAndUpdate(userId, {
                 ...(data.name && { name: data.name }),
                 ...(data.phone && { phone: data.phone }),
             });
         }
 
-        // Update licenseNumber/experience on driver profile
+        // Update licenseNumber/experience on the DriverProfile document
+        if (data.licenseNumber !== undefined || data.experience !== undefined) {
+            await DriverProfileModel.findOneAndUpdate(
+                { userId },
+                {
+                    ...(data.licenseNumber !== undefined && { licenseNumber: data.licenseNumber }),
+                    ...(data.experience !== undefined && { experienceYears: data.experience }),
+                }
+            );
+        }
+
+        // Return refreshed profile
         const profile = await driverService.getProfile(userId);
         res.json({ status: 'success', data: profile });
     } catch (error) {
