@@ -17,9 +17,12 @@ export default function FindDriversPage() {
         const fetchDrivers = async () => {
             try {
                 const res = await api.get('/auth/drivers');
-                setDrivers(res.data.data);
+                // Guard: ensure we always set an array even if API returns unexpected shape
+                const data = res.data?.data;
+                setDrivers(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error('Failed to fetch drivers', error);
+                setDrivers([]);
             } finally {
                 setLoading(false);
             }
