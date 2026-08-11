@@ -163,6 +163,11 @@ app.get('/ping', (_req, res) => {
     res.status(200).json({ status: 'ok' });
 });
 
+// Render health check expects /health — must exist or deployment fails
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
 app.get('/api/ping', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
