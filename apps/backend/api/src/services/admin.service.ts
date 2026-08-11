@@ -324,7 +324,11 @@ export async function getSystemHealth() {
 
         if (state === 1) {
             // Run a lightweight ping
-            await mongoose.connection.db.admin().ping();
+            if (mongoose.connection.db) {
+                await mongoose.connection.db.admin().ping();
+            } else {
+                throw new Error('Database connection established but db instance is undefined');
+            }
             checks.push({ service: 'MongoDB', status: 'healthy', latencyMs: Date.now() - start });
         } else {
             checks.push({ service: 'MongoDB', status: 'down', detail: `Connection state: ${state}` });

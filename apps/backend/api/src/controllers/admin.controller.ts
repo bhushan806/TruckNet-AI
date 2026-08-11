@@ -24,7 +24,7 @@ import {
 const conversationStore = new Map<string, Array<{ role: 'user' | 'assistant'; content: string }>>();
 
 // ── Helper: log audit event ──
-async function auditLog(req: AuthRequest, action: string, metadata: object = {}) {
+async function auditLog(req: AuthRequest, action: 'VIEW_AS_CUSTOMER' | 'VIEW_AS_DRIVER' | 'VIEW_AS_OWNER' | 'RETURN_TO_ADMIN' | 'ADMIN_AI_QUERY' | 'ADMIN_DASHBOARD_ACCESS' | 'ADMIN_USERS_VIEW' | 'ADMIN_ANALYTICS_VIEW', metadata: object = {}) {
     try {
         await AdminAuditModel.create({
             adminId: req.user!.id,
