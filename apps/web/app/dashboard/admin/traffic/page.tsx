@@ -135,13 +135,13 @@ export default function AdminTrafficPage() {
                                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                     <XAxis
                                         dataKey="hour"
-                                        tickFormatter={(v) => new Date(v).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                        tickFormatter={(v: any) => v ? new Date(v).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}
                                         tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                                     />
                                     <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                                     <Tooltip
                                         contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 8 }}
-                                        labelFormatter={(v) => new Date(v).toLocaleString('en-IN')}
+                                        labelFormatter={(v: any) => v ? new Date(v).toLocaleString('en-IN') : ''}
                                     />
                                     <Legend />
                                     <Area type="monotone" dataKey="requests" stroke="#3b82f6" fill="url(#reqGrad)" strokeWidth={2} name="Requests" />
