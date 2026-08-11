@@ -14,28 +14,6 @@ interface ChatMessage {
 }
 
 export const callGrokAPI = async (messages: ChatMessage[]) => {
-    // Priority 1: Groq (Fastest Cloud Provider)
-    if (process.env.GROQ_API_KEY) {
-        try {
-            const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-                model: "llama-3.3-70b-versatile",
-                messages: messages
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 10000,
-            });
-            return response.data.choices[0].message.content;
-        } catch (error: any) {
-            // SECURITY: Never log the API key; only log sanitized error info
-            const status = error.response?.status;
-            const msg = error.response?.data?.error?.message || error.message;
-            logger.error('Groq API error', { status, message: msg });
-            // Fallthrough to next provider
-        }
-    }
 
     // Priority 2: Ollama (Local Free)
     const ollamaHost = process.env.OLLAMA_HOST;

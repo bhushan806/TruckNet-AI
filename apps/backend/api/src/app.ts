@@ -21,6 +21,9 @@ import { requestTimeout } from './middlewares/requestTimeout';
 import { logger } from './utils/logger';
 import { LoadService } from './services/load.service';
 import { rateLimiter } from './middlewares/rateLimiter';
+import { trafficMonitorMiddleware } from './utils/trafficMonitor';
+import { seedAdmin } from './config/seedAdmin';
+
 
 process.on('uncaughtException', (error) => {
     logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
@@ -47,12 +50,17 @@ import financeRoutes from './routes/finance.routes';
 import documentRoutes from './routes/document.routes';
 import dostRoutes from './routes/dost.routes';
 import predictiveRoutes from './routes/predictive.routes';
+import adminRoutes from './routes/admin.routes';
 
 import { connectMongoose } from './config/mongoose';
 import { initSocket } from './config/socket';
 
 // Connect Mongoose (resilient with auto-reconnect)
-connectMongoose();
+connectMongoose().then(() => {
+    // Seed admin user from env vars after DB is ready (idempotent)
+    seedAdmin();
+});
+
 
 const app = express();
 const httpServer = createServer(app);
@@ -159,6 +167,11 @@ app.get('/api/health', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// ── Traffic Monitor (before auth, after static middleware) ──
+// Tracks all API requests, latency, and error rates for Admin Dashboard.
+// IMPORTANT: In-memory only — resets on server restart. Not persistent analytics.
+app.use(trafficMonitorMiddleware);
+
 // ── Global Rate Limiter (100 req / 15 min per IP) ──
 const globalLimiter = rateLimiter({
     windowMs: 15 * 60 * 1000,
@@ -193,6 +206,7 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/dost', dostRoutes);
 app.use('/api/predictive', predictiveRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ── 404 Handler ──
 app.all('*', (req, _res, next) => {

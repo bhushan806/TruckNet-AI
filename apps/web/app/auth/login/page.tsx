@@ -24,7 +24,8 @@ export default function LoginPage() {
     // If already logged in, go to dashboard immediately
     useEffect(() => {
         if (!loading && user) {
-            if (user.role === 'DRIVER') router.replace('/dashboard/driver');
+            if (user.role === 'ADMIN') router.replace('/dashboard/admin');
+            else if (user.role === 'DRIVER') router.replace('/dashboard/driver');
             else if (user.role === 'OWNER') router.replace('/dashboard/owner');
             else router.replace('/dashboard/customer');
         }

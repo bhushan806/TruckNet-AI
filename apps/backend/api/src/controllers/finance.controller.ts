@@ -8,7 +8,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { AppError } from '../utils/AppError';
-import Transaction from '../models/Transaction';
+import { FinanceService } from '../services/finance.service';
 import { z } from 'zod';
 
 const transactionSchema = z.object({
@@ -37,26 +37,7 @@ export const getFinanceOverview = async (req: AuthRequest, res: Response, next: 
         const { page, limit, type } = paginationSchema.parse(req.query);
         const skip = (page - 1) * limit;
 
-        const filter: Record<string, any> = { owner: userId };
-        if (type !== 'all') filter.type = type;
-
-        const [transactions, total, summary] = await Promise.all([
-            Transaction.find(filter).sort({ date: -1 }).skip(skip).limit(limit).lean(),
-            Transaction.countDocuments(filter),
-            // Aggregate for summary stats (avoids loading all records)
-            Transaction.aggregate([
-                { $match: { owner: userId } },
-                {
-                    $group: {
-                        _id: '$type',
-                        total: { $sum: '$amount' },
-                    },
-                },
-            ]),
-        ]);
-
-        const income = summary.find(s => s._id === 'income')?.total || 0;
-        const expenses = summary.find(s => s._id === 'expense')?.total || 0;
+        const { transactions, total, income, expenses } = await FinanceService.getTransactions(userId, skip, limit, type as any);
 
         res.json({
             status: 'success',
@@ -88,11 +69,7 @@ export const addTransaction = async (req: AuthRequest, res: Response, next: Next
 
         const data = transactionSchema.parse(req.body);
 
-        const newTx = await Transaction.create({
-            owner: userId,
-            ...data,
-            date: data.date ? new Date(data.date) : new Date(),
-        });
+        const newTx = await FinanceService.createTransaction(userId, data);
 
         res.status(201).json({ status: 'success', data: newTx });
     } catch (error) {

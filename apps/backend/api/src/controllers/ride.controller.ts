@@ -53,7 +53,7 @@ export const acceptRide = async (req: AuthRequest, res: Response, next: NextFunc
         const driverId = (req.user as any).driverProfile?.id;
 
         if (!driverId) {
-            throw new Error('Driver profile not found');
+            return res.status(403).json({ status: 'error', message: 'Driver profile not found' });
         }
 
         const result = await rideService.acceptRide(id, driverId);
@@ -89,7 +89,9 @@ export const getDriverTasks = async (req: AuthRequest, res: Response, next: Next
     try {
         // Get driver profile ID from user relation
         const driverId = (req.user as any).driverProfile?.id;
-        if (!driverId) throw new Error('Driver profile not found');
+        if (!driverId) {
+            return res.status(200).json({ status: 'success', data: [] });
+        }
 
         const result = await rideService.getDriverTasks(driverId);
         res.status(200).json({ status: 'success', data: result });

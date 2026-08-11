@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { AdminViewAsBanner } from '@/components/admin/AdminViewAsBanner';
 import { useState } from 'react';
+
 import { Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -40,7 +42,11 @@ export default function DashboardLayout({
     }
 
     return (
-        <div className="flex min-h-screen w-full bg-muted/40">
+        <div className="flex min-h-screen w-full bg-muted/40 flex-col">
+            {/* Admin role-preview banner (only shows when admin is viewing as another role) */}
+            <AdminViewAsBanner />
+            <div className="flex flex-1">
+
             {/* Desktop Sidebar */}
             <div className="hidden border-r bg-background md:block md:w-64 fixed h-full z-30">
                 <Sidebar />
@@ -76,6 +82,8 @@ export default function DashboardLayout({
                     {children}
                 </main>
             </div>
+                </div>
         </div>
     );
 }
+

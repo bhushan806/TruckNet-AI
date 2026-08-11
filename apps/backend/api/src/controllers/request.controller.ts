@@ -36,7 +36,9 @@ export const sendRequest = async (req: AuthRequest, res: Response, next: NextFun
 export const getDriverRequests = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const driverProfileId = (req.user as any).driverProfile?.id;
-        if (!driverProfileId) throw new Error('Driver profile not found');
+        if (!driverProfileId) {
+            return res.status(200).json({ status: 'success', data: [] });
+        }
 
         const requests = await ConnectionRequestModel.find({
             driverId: driverProfileId,

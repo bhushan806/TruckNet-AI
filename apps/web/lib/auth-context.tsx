@@ -9,6 +9,11 @@
 //   login()  → set user state + cookie indicator + push to correct dashboard
 //   logout() → clear state + redirect to landing page "/"
 //   onMount  → verify session via /auth/me; redirect if user already logged in
+//
+// ROLE SWITCHING (Admin only):
+//   viewingAs — frontend-only view state. NEVER changes JWT or DB role.
+//   setViewingAs() — persisted in sessionStorage (survives navigation, not refresh)
+//   Admin identity always remains ADMIN in the backend.
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,11 +28,16 @@ interface User {
     avatar?: string;
 }
 
+type ViewingAsRole = 'CUSTOMER' | 'DRIVER' | 'OWNER' | null;
+
 interface AuthContextType {
     user: User | null;
     loading: boolean;
     login: (user: User, token?: string) => void;
     logout: () => Promise<void>;
+    // ── Admin Role Switching (frontend-only view state) ──
+    viewingAs: ViewingAsRole;
+    setViewingAs: (role: ViewingAsRole) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,23 +45,38 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     login: () => { },
     logout: async () => { },
+    viewingAs: null,
+    setViewingAs: async () => { },
 });
 
 /** Derive the correct dashboard path based on user role */
 function getDashboardPath(role: User['role']): string {
+    if (role === 'ADMIN') return '/dashboard/admin';
     if (role === 'DRIVER') return '/dashboard/driver';
     if (role === 'OWNER') return '/dashboard/owner';
     return '/dashboard/customer';
 }
 
+/** Derive the dashboard path for a viewing role */
+function getViewingDashboardPath(role: ViewingAsRole): string {
+    if (role === 'DRIVER') return '/dashboard/driver';
+    if (role === 'OWNER') return '/dashboard/owner';
+    if (role === 'CUSTOMER') return '/dashboard/customer';
+    return '/dashboard/admin';
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [viewingAs, setViewingAsState] = useState<ViewingAsRole>(null);
     const router = useRouter();
 
     useEffect(() => {
+        // Restore viewingAs from sessionStorage (survives navigation, not page refresh)
+        const savedViewingAs = sessionStorage.getItem('admin_viewing_as') as ViewingAsRole | null;
+        if (savedViewingAs) setViewingAsState(savedViewingAs);
+
         // On app mount: check for cached user profile in localStorage.
-        // The actual session validity is confirmed by the HTTP-only cookie the browser sends.
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
             try {
@@ -62,16 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Only verify session via /auth/me if there's a plausible active session.
-        // The is_logged_in cookie is a non-HttpOnly indicator set client-side on login.
-        // Skipping this call when not logged in avoids unnecessary 401s hitting the backend.
         const hasSessionIndicator = document.cookie.includes('is_logged_in=true');
         if (!hasSessionIndicator && !storedUser) {
             setLoading(false);
             return;
         }
 
-        // Verify session is still valid by calling /auth/me
-        // This handles the case where the cookie expired between visits.
         api.get('/auth/me')
             .then(res => {
                 const freshUser = res.data?.data?.user;
@@ -81,60 +102,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
             })
             .catch(() => {
-                // Cookie expired or invalid — clear cached user profile
                 localStorage.removeItem('user');
                 document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 setUser(null);
+                setViewingAsState(null);
+                sessionStorage.removeItem('admin_viewing_as');
             })
             .finally(() => setLoading(false));
     }, []);
 
     const login = (userData: User, token?: string) => {
-        // Store non-sensitive user profile in localStorage.
         localStorage.setItem('user', JSON.stringify(userData));
-
-        // Always set the indicator cookie for the Next.js middleware.
-        // This must happen BEFORE router.push so the middleware sees it.
-        const maxAge = token ? 15 * 60 : 60 * 60 * 24; // 15 min if short-lived token, else 24h
+        const maxAge = token ? 15 * 60 : 60 * 60 * 24;
         document.cookie = `is_logged_in=true; path=/; max-age=${maxAge}`;
-
-        // Legacy support: if caller sends token, store it for Authorization header fallback.
-        if (token) {
-            localStorage.setItem('token', token);
-        }
-
+        if (token) localStorage.setItem('token', token);
         setUser(userData);
-
-        // ── CRITICAL FIX: immediately navigate to the correct dashboard ──
-        // This removes the need for manual refresh after login.
         router.push(getDashboardPath(userData.role));
     };
 
     const logout = async () => {
         try {
-            // Clear this user's chat cache before wiping identity
-            if (user?.id) {
-                localStorage.removeItem(`chat_${user.id}`);
-            }
-
-            // Call backend to clear the HTTP-only cookie and revoke refresh token
+            if (user?.id) localStorage.removeItem(`chat_${user.id}`);
             await api.post('/auth/logout');
         } catch {
-            // Even if the server call fails, clear local state
+            // Even if server call fails, clear local state
         } finally {
             localStorage.removeItem('user');
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
-            // Clear indicator cookie
+            sessionStorage.removeItem('admin_viewing_as');
             document.cookie = 'is_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
             setUser(null);
-            // ── FIX: go to landing page, not login page ──
+            setViewingAsState(null);
             router.push('/');
         }
     };
 
+    /**
+     * Admin-only: set the role being previewed in the dashboard.
+     * SECURITY:
+     *   - Only works when the real user role is ADMIN.
+     *   - Does NOT change the JWT, DB role, or any authorization.
+     *   - Backend always sees the real ADMIN identity.
+     *   - The viewingAs value CANNOT grant any privileges.
+     */
+    const setViewingAs = async (role: ViewingAsRole) => {
+        // SECURITY: only admin can use role switching
+        if (user?.role !== 'ADMIN') return;
+
+        setViewingAsState(role);
+
+        if (role) {
+            sessionStorage.setItem('admin_viewing_as', role);
+        } else {
+            sessionStorage.removeItem('admin_viewing_as');
+        }
+
+        // Record the role-switch event on the backend for audit
+        try {
+            await api.post('/admin/view-as-role', { role });
+        } catch {
+            // Non-fatal — audit logging failure should not block UI
+        }
+
+        // Navigate to the appropriate dashboard
+        router.push(getViewingDashboardPath(role));
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, viewingAs, setViewingAs }}>
             {children}
         </AuthContext.Provider>
     );

@@ -37,7 +37,6 @@ const envSchema = z.object({
         : z.string().default('http://localhost:3000'),
 
     // ── AI Providers (optional — app falls back gracefully) ──
-    GROQ_API_KEY: z.string().optional(),
     OLLAMA_HOST: z.string().optional(),
     HF_API_TOKEN: z.string().optional(),
     AI_ENGINE_URL: z.string().default('http://localhost:8000'),
@@ -47,6 +46,12 @@ const envSchema = z.object({
 
     // ── Load Expiry Configuration ──
     LOAD_EXPIRY_MS: z.string().optional(),
+
+    // ── Admin Account Seeding (optional — see config/seedAdmin.ts) ──
+    // SECURITY: These values belong ONLY in your .env file or deployment secrets.
+    // NEVER commit real values to Git. NEVER expose to the frontend.
+    ADMIN_EMAIL: z.string().email('ADMIN_EMAIL must be a valid email').optional(),
+    ADMIN_PASSWORD: z.string().min(12, 'ADMIN_PASSWORD must be at least 12 characters').optional(),
 });
 
 const envVars = envSchema.safeParse(process.env);

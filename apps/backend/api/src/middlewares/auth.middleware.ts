@@ -154,7 +154,11 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
 
 export const authorize = (...roles: Array<'ADMIN' | 'OWNER' | 'DRIVER' | 'CUSTOMER'>) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
-        if (!req.user || !roles.includes(req.user.role as any)) {
+        if (!req.user) {
+            return next(new AppError('You do not have permission to perform this action', 403));
+        }
+        // ADMIN is implicitly allowed to access all routes for role switching
+        if (req.user.role !== 'ADMIN' && !roles.includes(req.user.role as any)) {
             return next(new AppError('You do not have permission to perform this action', 403));
         }
         next();

@@ -16,6 +16,7 @@ import { DriverProfileModel } from '../models/mongoose/DriverProfile';
 import { OwnerProfileModel } from '../models/mongoose/OwnerProfile';
 import { RefreshTokenModel } from '../models/mongoose/RefreshToken';
 import { logger } from '../utils/logger';
+import { EmailService } from './email.service';
 
 const BCRYPT_ROUNDS = env.NODE_ENV === 'production' ? 12 : 10;
 const MAX_LOGIN_ATTEMPTS = 5;
@@ -264,19 +265,7 @@ export class AuthService {
             passwordResetExpires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
         });
 
-        // TODO: Send email using your email service (SendGrid, AWS SES, etc.)
-        // The reset URL would be: https://your-domain.com/auth/reset-password?token=${rawToken}
-        // For now log in dev — replace with real email in production
-        if (env.NODE_ENV !== 'production') {
-            logger.info('[DEV] Password reset token', {
-                email,
-                resetUrl: `http://localhost:3000/auth/reset-password?token=${rawToken}`,
-            });
-        } else {
-            // In production, this MUST send an email — fail loudly if email service not configured
-            logger.warn('Password reset requested but email service not configured', { userId: user._id });
-            // await emailService.sendPasswordResetEmail(email, rawToken); // Uncomment when email service added
-        }
+        await EmailService.sendPasswordResetEmail(email, rawToken);
 
         logger.info('Password reset token created', { userId: user._id });
     }
