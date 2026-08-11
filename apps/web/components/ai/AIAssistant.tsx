@@ -313,7 +313,7 @@ export default function AIAssistant() {
 
             // Fetch from server (Node backend /api/dost/history is authoritative)
             try {
-                const res = await aiApi.get('/dost/history');
+                const res = await api.get('/dost/history');
                 const history = res.data?.history || [];
 
                 if (Array.isArray(history) && history.length > 0) {
@@ -389,7 +389,7 @@ export default function AIAssistant() {
         if (!window.confirm("Clear chat history?")) return;
         const userIdToUse = user?.id || 'anonymous';
         try {
-            if (!isPublicMode) await aiApi.delete('/dost/history');
+            if (!isPublicMode) await api.delete('/dost/history');
             localStorage.removeItem(`chat_${userIdToUse}`);
             setMessages([{ role: 'assistant', content: getWelcomeMessage(user?.role) }]);
             setShowQuickActions(true);
@@ -414,7 +414,7 @@ export default function AIAssistant() {
                 content: m.content
             }));
 
-            const res = await aiApi.post('/dost/chat', {
+            const res = await api.post('/dost/chat', {
                 message: messageText,
                 conversationHistory
             });
