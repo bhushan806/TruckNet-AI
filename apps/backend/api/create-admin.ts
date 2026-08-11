@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = 'admin@trucknet.com';
+  const email = 'superadmin@trucknet.com';
   const password = 'adminpassword123';
   const phone = '0000000000'; // Dummy phone
 

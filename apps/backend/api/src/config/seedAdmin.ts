@@ -31,15 +31,10 @@ export async function seedAdmin(): Promise<void> {
         const existing = await UserModel.findOne({ email: adminEmail.toLowerCase() });
 
         if (existing) {
-            // Update role to ADMIN if somehow demoted (safety net)
             if (existing.role !== 'ADMIN') {
-                await UserModel.findByIdAndUpdate(existing._id, {
-                    role: 'ADMIN',
-                    isVerified: true,
-                    isActive: true,
-                });
-                logger.warn('Admin seed: existing user upgraded to ADMIN role', {
+                logger.error('Admin seed: A non-admin user already exists with this email.', {
                     userId: existing._id.toString(),
+                    email: adminEmail,
                 });
             } else {
                 logger.info('Admin seed: admin user already exists, skipping creation');

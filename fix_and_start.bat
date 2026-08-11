@@ -39,7 +39,7 @@ echo 4. Starting Development Server (Web + API + AI)...
 echo.
 echo ==========================================
 echo   SYSTEM READY! OPENING APP...
-echo   Login: admin@trucknet.com / admin123
+echo   Login: superadmin@trucknet.com / admin123
 echo ==========================================
 echo.
 npm run dev
