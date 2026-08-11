@@ -180,7 +180,7 @@ export default function AdminAnalyticsPage() {
                                                     cx="50%"
                                                     cy="50%"
                                                     outerRadius={80}
-                                                    label={({ role, percent }) => `${role} ${(percent * 100).toFixed(0)}%`}
+                                                    label={({ role, percent = 0 }: any) => `${role} ${(percent * 100).toFixed(0)}%`}
                                                     labelLine={false}
                                                 >
                                                     {data.users.roleDistribution.map((_: any, i: number) => (
