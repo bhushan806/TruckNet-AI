@@ -19,7 +19,7 @@ export const callGrokAPI = async (messages: ChatMessage[]) => {
     if (process.env.GROQ_API_KEY) {
         try {
             const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-                model: 'llama3-70b-8192',
+                model: 'llama-3.3-70b-versatile',
                 messages: messages,
             }, {
                 headers: {
