@@ -41,7 +41,7 @@ export default function AdminAiPage() {
         setLoading(true);
 
         try {
-            const res = await api.post('/admin/ai/chat', {
+            const res = await api.post('/admin/ops/chat', {
                 message: content.trim(),
             });
             const reply = res.data.data.reply;
@@ -65,7 +65,7 @@ export default function AdminAiPage() {
     const clearChat = async () => {
         setMessages([]);
         try {
-            await api.post('/admin/ai/chat', { message: 'reset', resetHistory: true });
+            await api.post('/admin/ops/chat', { message: 'reset', resetHistory: true });
         } catch { }
     };
 

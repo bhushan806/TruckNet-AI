@@ -57,8 +57,8 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 
 const COOKIE_OPTS = {
     httpOnly: true,
-    secure: IS_PROD,
-    sameSite: (IS_PROD ? 'none' : 'lax') as 'none' | 'lax',
+    secure: true, // Always true for prototype cross-domain auth
+    sameSite: 'none' as const, // Force cross-site cookies
 };
 
 function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
@@ -81,13 +81,13 @@ function clearAuthCookies(res: Response) {
     // (domain, path, sameSite, secure) or the browser will not delete the cookie.
     res.clearCookie('access_token', {
         httpOnly: true,
-        secure: IS_PROD,
-        sameSite: IS_PROD ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none' as const,
     });
     res.clearCookie('refresh_token', {
         httpOnly: true,
-        secure: IS_PROD,
-        sameSite: IS_PROD ? 'none' : 'lax',
+        secure: true,
+        sameSite: 'none' as const,
         path: '/api/auth/refresh',
     });
 }

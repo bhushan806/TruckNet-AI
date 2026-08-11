@@ -41,7 +41,7 @@ router.get('/system-health', getSystemHealthStatus);    // Real service health c
 router.get('/audit-log', getAuditLog);                  // Admin audit trail
 
 // ── Admin AI Assistant ──
-router.post('/ai/chat', adminAiLimiter, adminAiChat);
+router.post('/ops/chat', adminAiLimiter, adminAiChat);
 
 // ── Role Switching Audit ──
 // Records admin viewing as a role — does NOT change identity or authorization

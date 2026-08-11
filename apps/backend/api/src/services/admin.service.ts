@@ -350,7 +350,7 @@ export async function getSystemHealth() {
     // 4. Python AI Engine
     try {
         const start = Date.now();
-        await axios.get(`${env.AI_ENGINE_URL}/health`, { timeout: 5000 });
+        await axios.get(`${env.AI_ENGINE_URL}/ping`, { timeout: 5000 });
         checks.push({ service: 'Python AI Engine', status: 'healthy', latencyMs: Date.now() - start });
     } catch {
         checks.push({ service: 'Python AI Engine', status: 'down', detail: 'Not reachable or not running' });

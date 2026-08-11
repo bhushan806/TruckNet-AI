@@ -48,7 +48,7 @@ export function ServerWakeUp({ children }: { children: React.ReactNode }) {
             }
             const start = Date.now();
             try {
-                await fetch(`${url.replace(/\/api$/, '')}/health`, {
+                await fetch(`${url.replace(/\/api$/, '')}/ping`, {
                     signal: AbortSignal.timeout(60_000),
                     cache: 'no-store',
                 });

@@ -159,11 +159,11 @@ app.use((req, res, next) => {
 
 // ── Public Health Checks (before rate limiter) ──
 // FIX: Removed process.memoryUsage() from public endpoint — leaks server internals
-app.get('/health', (_req, res) => {
+app.get('/ping', (_req, res) => {
     res.status(200).json({ status: 'ok' });
 });
 
-app.get('/api/health', (_req, res) => {
+app.get('/api/ping', (_req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 

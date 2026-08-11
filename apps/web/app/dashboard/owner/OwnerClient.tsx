@@ -50,7 +50,10 @@ export default function OwnerDashboard() {
 
         // Socket.io connection — derive base URL from API URL env var
         const socket = io(process.env.NEXT_PUBLIC_API_URL || '', {
-            auth: { token: localStorage.getItem('token') }
+            auth: { token: localStorage.getItem('token') },
+            transports: ['websocket', 'polling'],
+            reconnectionAttempts: 10,
+            reconnectionDelay: 2000
         });
 
         socket.on('connect', () => {

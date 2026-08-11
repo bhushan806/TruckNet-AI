@@ -231,8 +231,8 @@ route_optimizer = RouteOptimizer()
 def root_check():
     return {"status": "healthy", "service": "TruckNet AI Engine", "version": "2.0.0"}
 
-@app.get("/health")
-async def health():
+@app.get("/ping")
+async def health_check():
     return {
         "status": "ok",
         "service": "TruckNet AI Engine",
