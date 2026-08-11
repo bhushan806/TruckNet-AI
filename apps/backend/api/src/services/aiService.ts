@@ -14,8 +14,64 @@ interface ChatMessage {
 }
 
 export const callGrokAPI = async (messages: ChatMessage[]) => {
+    
+    // Priority 1: Gemini (Google Cloud)
+    if (process.env.GEMINI_API_KEY) {
+        try {
+            // Convert messages to Gemini format
+            let systemInstruction = "";
+            const geminiContents = messages.map(m => {
+                if (m.role === 'system') {
+                    systemInstruction = m.content;
+                    return null;
+                }
+                return {
+                    role: m.role === 'assistant' ? 'model' : 'user',
+                    parts: [{ text: m.content }]
+                };
+            }).filter(Boolean);
 
-    // Priority 2: Ollama (Local Free)
+            const payload: any = { contents: geminiContents };
+            if (systemInstruction) {
+                payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+            }
+
+            const response = await axios.post(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+                payload,
+                { headers: { 'Content-Type': 'application/json' }, timeout: 60000 }
+            );
+            
+            if (response.data.candidates && response.data.candidates.length > 0) {
+                return response.data.candidates[0].content.parts[0].text;
+            }
+        } catch (error: any) {
+            logger.warn('Gemini failed, falling back...', { error: error.message });
+        }
+    }
+
+    // Priority 2: Groq Cloud
+    if (process.env.GROQ_API_KEY) {
+        try {
+            const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+                model: 'llama3-70b-8192',
+                messages: messages,
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 30000
+            });
+            if (response.data.choices && response.data.choices.length > 0) {
+                return response.data.choices[0].message.content;
+            }
+        } catch (error: any) {
+            logger.warn('Groq failed, falling back...', { error: error.message });
+        }
+    }
+
+    // Priority 3: Ollama (Local Free)
     const ollamaHost = process.env.OLLAMA_HOST;
     if (ollamaHost) {
         try {
