@@ -12,10 +12,9 @@
     "dev": "turbo run dev",
     "build:web": "npm --workspace=apps/web run build",
     "build:api": "cd apps/backend/api && npm install && npm run build",
-    "build:ai": "cd apps/backend/ai-node-engine && npm install && npm run build",
-    "build:all": "npm run build:api && npm run build:ai",
+    "build:all": "npm run build:api && npm run build:web",
     "start:api": "cd apps/backend/api && node dist/app.js",
-    "start:ai": "cd apps/backend/ai-node-engine && node dist/server.js"
+    "start:ai": "cd apps/ai_engine && uvicorn main:app --host 0.0.0.0 --port 8000"
   },
   "engines": {
     "node": ">=20.0.0 <25.0.0",

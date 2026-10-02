@@ -9,7 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import MapComponent from '@/components/map/Map';
 import api from '@/lib/api';
-import { Package, MapPin, Clock, Truck } from 'lucide-react';
+import { Package, MapPin, Clock, Truck, FileText, MessageCircle, CreditCard } from 'lucide-react';
+import Link from 'next/link';
+import TripConnectModal from '@/components/trip/TripConnectModal';
+import BiltyViewerModal from '@/components/trip/BiltyViewerModal';
+import PaymentModal from '@/components/payment/PaymentModal';
 
 export default function CustomerDashboard() {
     const [formData, setFormData] = useState({
@@ -195,16 +199,20 @@ export default function CustomerDashboard() {
 
 function MyLoadsList() {
     const [loads, setLoads] = useState<any[]>([]);
+    const [selectedChatLoad, setSelectedChatLoad] = useState<any>(null);
+    const [selectedBiltyLoad, setSelectedBiltyLoad] = useState<any>(null);
+    const [selectedPaymentLoad, setSelectedPaymentLoad] = useState<any>(null);
+
+    const fetchLoads = async () => {
+        try {
+            const res = await api.get('/loads/my-loads');
+            setLoads(res.data.data);
+        } catch (error) {
+            console.error('Failed to fetch loads', error);
+        }
+    };
 
     useEffect(() => {
-        const fetchLoads = async () => {
-            try {
-                const res = await api.get('/loads/my-loads');
-                setLoads(res.data.data);
-            } catch (error) {
-                console.error('Failed to fetch loads', error);
-            }
-        };
         fetchLoads();
     }, []);
 
@@ -245,58 +253,124 @@ function MyLoadsList() {
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {loads.map((load) => (
-                <Card key={load._id || load.id} className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all">
-                    <CardHeader className="pb-2">
-                        <div className="flex justify-between items-start">
-                            <CardTitle className="text-base font-semibold">
-                                {load.source} → {load.destination}
-                            </CardTitle>
-                            <Badge className={getStatusColor(load.status)}>
-                                {load.status.replace(/_/g, ' ')}
-                            </Badge>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="text-sm space-y-2">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Goods:</span>
-                            <span>{load.goodsType}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Weight:</span>
-                            <span>{load.weight} tons</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Budget:</span>
-                            <span className="font-bold text-green-600">₹{load.price}</span>
-                        </div>
-                        {load.distance > 0 && (
+                <Card key={load._id || load.id} className="border-l-4 border-l-blue-500 hover:shadow-lg transition-all flex flex-col justify-between">
+                    <div>
+                        <CardHeader className="pb-2">
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-base font-semibold">
+                                    {load.source} → {load.destination}
+                                </CardTitle>
+                                <Badge className={getStatusColor(load.status)}>
+                                    {load.status.replace(/_/g, ' ')}
+                                </Badge>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 pt-1">
+                                <span>TXN: <strong className="text-slate-800">{load.transactionId || 'TRX-' + (load._id || load.id).slice(-6).toUpperCase()}</strong></span>
+                                <span className="text-emerald-600 font-sans font-medium text-[10px]">🛡️ Verified</span>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-2">
                             <div className="flex justify-between">
-                                <span className="text-muted-foreground">Distance:</span>
-                                <span>{load.distance} km</span>
+                                <span className="text-muted-foreground">Goods:</span>
+                                <span>{load.goodsType}</span>
                             </div>
-                        )}
-
-                        {/* Owner info after acceptance */}
-                        {load.ownerId && load.status !== 'OPEN' && (
-                            <div className="pt-2 border-t mt-2">
-                                <p className="text-xs text-muted-foreground mb-1">Accepted by Owner</p>
-                                <p className="font-medium">{load.ownerId?.companyName || 'Transport Company'}</p>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Weight:</span>
+                                <span>{load.weight} tons</span>
                             </div>
-                        )}
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Budget:</span>
+                                <span className="font-bold text-green-600">₹{load.price?.toLocaleString('en-IN')}</span>
+                            </div>
+                            {load.distance > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Distance:</span>
+                                    <span>{load.distance} km</span>
+                                </div>
+                            )}
 
-                        {load.status === 'OPEN' && (
+                            {/* Owner info after acceptance */}
+                            {load.ownerId && load.status !== 'OPEN' && (
+                                <div className="pt-2 border-t mt-2">
+                                    <p className="text-xs text-muted-foreground mb-1">Fleet Transporter</p>
+                                    <p className="font-medium text-slate-900">{load.ownerId?.companyName || 'Verified Fleet Partner'}</p>
+                                </div>
+                            )}
+
+                            {load.status === 'OPEN' && (
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="w-full mt-2"
+                                    onClick={() => handleCancel(load._id || load.id)}
+                                >
+                                    Cancel Load
+                                </Button>
+                            )}
+                        </CardContent>
+                    </div>
+
+                    {load.status !== 'OPEN' && (
+                        <div className="p-4 pt-0 space-y-2 border-t mt-2 bg-slate-50/60 rounded-b-lg">
+                            <div className="grid grid-cols-2 gap-2 pt-2">
+                                <Link href={`/dashboard/customer/tracking/${load._id || load.id}`} className="w-full">
+                                    <Button size="sm" variant="outline" className="w-full text-xs text-blue-700 border-blue-200 hover:bg-blue-50 font-medium">
+                                        Track & Map
+                                    </Button>
+                                </Link>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-semibold"
+                                    onClick={() => setSelectedBiltyLoad(load)}
+                                >
+                                    <FileText className="h-3 w-3 mr-1 text-emerald-600" /> Bilty (LR)
+                                </Button>
+                            </div>
                             <Button
-                                variant="destructive"
                                 size="sm"
-                                className="w-full mt-2"
-                                onClick={() => handleCancel(load._id || load.id)}
+                                className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-semibold h-8 shadow-sm"
+                                onClick={() => setSelectedPaymentLoad(load)}
                             >
-                                Cancel Load
+                                <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Pay Advance / Settle Freight (UPI)
                             </Button>
-                        )}
-                    </CardContent>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="w-full text-xs text-slate-700 hover:bg-slate-100 font-medium h-7"
+                                onClick={() => setSelectedChatLoad(load)}
+                            >
+                                <MessageCircle className="h-3 w-3 mr-1 text-blue-600" /> Transporter Contact & Chat
+                            </Button>
+                        </div>
+                    )}
                 </Card>
             ))}
+
+            {/* Direct Contact & Real-Time Chat Modal */}
+            <TripConnectModal
+                isOpen={!!selectedChatLoad}
+                onClose={() => setSelectedChatLoad(null)}
+                loadId={selectedChatLoad?._id || selectedChatLoad?.id}
+                loadIdentifier={selectedChatLoad?.transactionId || selectedChatLoad?.loadNumber || selectedChatLoad?._id || selectedChatLoad?.id}
+            />
+
+            {/* Statutory Indian Bilty / LR Viewer */}
+            <BiltyViewerModal
+                isOpen={!!selectedBiltyLoad}
+                onClose={() => setSelectedBiltyLoad(null)}
+                loadId={selectedBiltyLoad?._id || selectedBiltyLoad?.id}
+                transactionId={selectedBiltyLoad?.transactionId}
+            />
+
+            {/* Online UPI & Escrow Payment Modal */}
+            <PaymentModal
+                isOpen={!!selectedPaymentLoad}
+                onClose={() => setSelectedPaymentLoad(null)}
+                loadId={selectedPaymentLoad?._id || selectedPaymentLoad?.id}
+                transactionId={selectedPaymentLoad?.transactionId}
+                onPaymentSuccess={fetchLoads}
+            />
         </div>
     );
 }

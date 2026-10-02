@@ -129,10 +129,18 @@
   --destructive: #F97316;
   --destructive-foreground: #FFFFFF;
 
-  /* Border: Crisp White Border */
-  --border: rgba(255, 255, 255, 0.2);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: #22d3ee;
+  /* Industrial Tech Design System */
+  --color-industrial-base: #0B1120;
+  --color-industrial-surface: #121826;
+  --color-electric-teal: #00E5C3;
+  --color-signal-orange: #FF6B35;
+  --color-text-primary: #F8FAFC;
+  --color-text-muted: #94A3B8;
+
+  /* Border: Crisp Slate Border */
+  --border: rgba(148, 163, 184, 0.15);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #00E5C3;
 }
 
 @layer base {
@@ -142,9 +150,13 @@
 
   body {
     @apply text-foreground antialiased min-h-screen;
-    /* Deep Aurora Gradient: Slate-900 -> #0B1121 -> Slate-900 */
-    background-image: linear-gradient(to bottom right, #0f172a, #0b1121, #0f172a);
+    background-color: #0B1120;
+    background-image: 
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 229, 195, 0.12), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 60%, rgba(255, 107, 53, 0.06), transparent 70%),
+      linear-gradient(to bottom, #0B1120, #0E1626 50%, #0B1120);
     font-family: var(--font-inter);
+    color: #F8FAFC;
   }
 
   h1,
@@ -154,36 +166,146 @@
   h5,
   h6 {
     font-family: var(--font-space);
+    color: #F8FAFC;
+    letter-spacing: -0.02em;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes grid-move {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(40px);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
   }
 }
 
 @layer utilities {
-
-  /* Frosted White Glass Card */
-  .glass-card {
-    @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl;
-    /* 3D Depth */
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  /* Fluid clamp typography */
+  .text-fluid-hero {
+    font-size: clamp(2.25rem, 5vw + 1rem, 4.5rem);
+    line-height: 1.08;
   }
 
-  .glass-card:hover {
-    @apply -translate-y-1;
-    box-shadow: 0 10px 40px -10px rgba(34, 211, 238, 0.2);
+  .text-fluid-section {
+    font-size: clamp(1.75rem, 3vw + 0.5rem, 3rem);
+    line-height: 1.15;
   }
 
-  /* Neon Gradient Button */
-  .btn-neon {
-    @apply bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-lg shadow-cyan-500/30 transition-all hover:scale-105 active:scale-95;
+  /* Industrial Glass Card */
+  .industrial-card {
+    background: rgba(18, 24, 38, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05) inset;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
   }
 
-  /* Frosted Sidebar / Panel */
-  .glass-panel {
-    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+  .industrial-card:hover {
+    border-color: rgba(0, 229, 195, 0.3);
+    box-shadow: 0 20px 40px -15px rgba(0, 229, 195, 0.15), 0 0 20px -5px rgba(0, 229, 195, 0.1);
   }
 
-  /* Text Glow */
-  .text-glow {
-    text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
-    /* Cyan glow */
+  /* Shimmering Gradient Border Badge */
+  .shimmer-badge {
+    background: linear-gradient(90deg, rgba(0, 229, 195, 0.1) 0%, rgba(255, 107, 53, 0.15) 50%, rgba(0, 229, 195, 0.1) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 4s infinite linear;
+    border: 1px solid rgba(0, 229, 195, 0.3);
+  }
+
+  /* High-Contrast Action Buttons */
+  .btn-electric {
+    background: #00E5C3;
+    color: #0B1120;
+    font-weight: 600;
+    box-shadow: 0 0 20px rgba(0, 229, 195, 0.35);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-electric:hover {
+    background: #05f0cd;
+    box-shadow: 0 0 30px rgba(0, 229, 195, 0.6);
+    transform: scale(1.03);
+  }
+
+  .btn-electric:active {
+    transform: scale(0.97);
+  }
+
+  .btn-signal {
+    background: #FF6B35;
+    color: #FFFFFF;
+    font-weight: 600;
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.35);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-signal:hover {
+    background: #ff7e4d;
+    box-shadow: 0 0 30px rgba(255, 107, 53, 0.6);
+    transform: scale(1.03);
+  }
+
+  .btn-signal:active {
+    transform: scale(0.97);
+  }
+
+  /* Industrial Moving Grid Background */
+  .bg-industrial-grid {
+    background-size: 40px 40px;
+    background-image: 
+      linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  }
+
+  /* Road perspective grid */
+  .perspective-road-grid {
+    background-size: 60px 60px;
+    background-image: 
+      linear-gradient(to right, rgba(0, 229, 195, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 229, 195, 0.08) 1px, transparent 1px);
+    transform: perspective(600px) rotateX(60deg);
+  }
+
+  /* Marquee animation */
+  .animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 25s linear infinite;
+  }
+
+  .animate-marquee:hover {
+    animation-play-state: paused;
   }
 }

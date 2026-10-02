@@ -23,6 +23,7 @@ interface Message {
         loadSharing?: any;
         insights?: any;
         routeAdvanced?: any;
+        trucks?: any[];
     };
     predictiveIntelligence?: any;
 }
@@ -191,6 +192,46 @@ function PredictiveIntelligenceCard({ data }: { data: any }) {
                         💡 {data.recommendedAction.length > 100 ? data.recommendedAction.slice(0, 100) + '…' : data.recommendedAction}
                     </p>
                 )}
+            </div>
+        </div>
+    );
+}
+
+function LiveTrucksCard({ data }: { data: any[] }) {
+    if (!data || !Array.isArray(data) || data.length === 0) return null;
+    return (
+        <div className="mt-3 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-3.5">
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 font-semibold text-blue-900 text-xs">
+                    <Truck className="h-3.5 w-3.5 text-blue-600" /> Real-Time Available Trucks ({data.length})
+                </div>
+                <span className="text-[10px] font-medium bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                    Live Verified
+                </span>
+            </div>
+            <div className="space-y-2">
+                {data.map((truck, idx) => (
+                    <div key={idx} className="bg-white border border-blue-100 rounded-lg p-2.5 shadow-xs text-xs">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <span className="font-bold text-slate-900">{truck.vehicleNumber}</span>
+                                <span className="ml-2 text-[10px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                                    {truck.capacity}T • {truck.bodyType?.replace(/_/g, ' ')}
+                                </span>
+                            </div>
+                            <span className="text-[11px] font-bold text-emerald-700">₹{truck.baseRatePerKm}/km</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-2 text-[11px] text-slate-500">
+                            <span>Base: {truck.homeCity} (★{truck.driverRating})</span>
+                            <a
+                                href="/dashboard/customer"
+                                className="font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-0.5 text-[10px]"
+                            >
+                                Book Now <ArrowRight className="h-2.5 w-2.5" />
+                            </a>
+                        </div>
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -668,6 +709,7 @@ export default function AIAssistant() {
                                 {msg.structuredData?.risk && <RiskCard data={msg.structuredData.risk} />}
                                 {msg.structuredData?.loadSharing && <LoadSharingCard data={msg.structuredData.loadSharing} />}
                                 {msg.structuredData?.routeAdvanced && <RouteOptionsCard data={msg.structuredData.routeAdvanced} />}
+                                {msg.structuredData?.trucks && <LiveTrucksCard data={msg.structuredData.trucks} />}
                                 {msg.predictiveIntelligence && <PredictiveIntelligenceCard data={msg.predictiveIntelligence} />}
 
                                 {/* Existing: Render Action Data (Loads) */}

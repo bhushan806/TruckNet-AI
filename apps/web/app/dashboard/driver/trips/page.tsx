@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Package, MapPin, Clock, CheckCircle, Truck, Star } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Clock, CheckCircle, Truck, Star, MessageCircle, Phone, FileText } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import TripConnectModal from '@/components/trip/TripConnectModal';
+import BiltyViewerModal from '@/components/trip/BiltyViewerModal';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
     ASSIGNED_TO_DRIVER: { label: 'Assigned', color: 'bg-purple-100 text-purple-800', icon: Package },
@@ -19,6 +21,8 @@ export default function DriverTripsPage() {
     const [loads, setLoads] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+    const [selectedChatLoad, setSelectedChatLoad] = useState<any>(null);
+    const [selectedBiltyLoad, setSelectedBiltyLoad] = useState<any>(null);
 
     useEffect(() => {
         const fetchLoads = async () => {
@@ -159,10 +163,41 @@ export default function DriverTripsPage() {
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
                                             <span className="text-lg font-bold text-green-600">₹{load.price?.toLocaleString('en-IN')}</span>
-                                            {load.status === 'COMPLETED' && (
-                                                <div className="flex items-center gap-1 text-yellow-500">
-                                                    <Star className="h-3 w-3 fill-yellow-400" />
-                                                    <span className="text-xs">Trip Complete</span>
+                                            <div className="text-[11px] font-mono text-slate-500">
+                                                TXN: <strong className="text-slate-800">{load.transactionId || 'TRX-' + (load._id || load.id).slice(-6).toUpperCase()}</strong>
+                                            </div>
+                                            {load.status === 'COMPLETED' ? (
+                                                <div className="flex flex-col items-end gap-1 mt-1">
+                                                    <div className="flex items-center gap-1 text-emerald-600 text-xs font-semibold">
+                                                        <CheckCircle className="h-3 w-3" /> Trip Complete
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-medium"
+                                                        onClick={() => setSelectedBiltyLoad(load)}
+                                                    >
+                                                        <FileText className="h-3 w-3 mr-1 text-emerald-600" /> Bilty / POD
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-end gap-1 mt-2">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-xs text-blue-700 border-blue-200 hover:bg-blue-50 font-medium"
+                                                        onClick={() => setSelectedChatLoad(load)}
+                                                    >
+                                                        <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> Call / Chat
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-medium"
+                                                        onClick={() => setSelectedBiltyLoad(load)}
+                                                    >
+                                                        <FileText className="h-3 w-3 mr-1 text-emerald-600" /> Bilty (LR)
+                                                    </Button>
                                                 </div>
                                             )}
                                         </div>
@@ -173,6 +208,22 @@ export default function DriverTripsPage() {
                     })}
                 </div>
             )}
+
+            {/* Direct Contact & Real-Time Chat Modal */}
+            <TripConnectModal
+                isOpen={!!selectedChatLoad}
+                onClose={() => setSelectedChatLoad(null)}
+                loadId={selectedChatLoad?._id || selectedChatLoad?.id}
+                loadIdentifier={selectedChatLoad?.transactionId || selectedChatLoad?.loadNumber || selectedChatLoad?._id || selectedChatLoad?.id}
+            />
+
+            {/* Statutory Indian Bilty / LR Viewer */}
+            <BiltyViewerModal
+                isOpen={!!selectedBiltyLoad}
+                onClose={() => setSelectedBiltyLoad(null)}
+                loadId={selectedBiltyLoad?._id || selectedBiltyLoad?.id}
+                transactionId={selectedBiltyLoad?.transactionId}
+            />
         </div>
     );
 }

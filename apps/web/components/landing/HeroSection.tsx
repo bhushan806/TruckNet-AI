@@ -1,128 +1,186 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, Variants } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight, Play, Shield, Sparkles } from 'lucide-react';
+import { HeroVisual3D } from './HeroVisual3D';
+import { DemoModal } from './DemoModal';
+import { useLanguage } from '@/lib/language-context';
+
+const TRUST_LOGOS = [
+    { name: 'Tata Motors Fleets', corridor: 'Delhi-Mumbai Express' },
+    { name: 'Ashok Leyland Logistics', corridor: 'Western Route' },
+    { name: 'Delhivery Surface Network', corridor: 'North-South Corridor' },
+    { name: 'BlueDart Surface Express', corridor: 'All India Network' },
+    { name: 'Mahindra Logistics Partners', corridor: 'Central Corridor' },
+];
 
 export function HeroSection() {
+    const { t } = useLanguage();
+    const [isDemoOpen, setIsDemoOpen] = useState(false);
+
+    const containerVariants: Variants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.15
+            }
+        }
+    };
+
+    const wordVariants: Variants = {
+        hidden: { opacity: 0, y: 24, filter: 'blur(8px)' },
+        visible: {
+            opacity: 1,
+            y: 0,
+            filter: 'blur(0px)',
+            transition: {
+                duration: 0.5,
+                ease: 'easeOut'
+            }
+        }
+    };
+
     return (
-        <section className="relative min-h-[95vh] flex items-center justify-center overflow-hidden bg-[#050B14]">
-            {/* Ambient Background Glow */}
-            <div className="absolute inset-0 z-0">
-                <div className="absolute top-1/4 left-1/4 w-[50vw] h-[50vw] bg-teal-900/20 rounded-full blur-[120px] mix-blend-screen opacity-50" />
-                <div className="absolute bottom-0 right-1/4 w-[40vw] h-[40vw] bg-emerald-900/10 rounded-full blur-[100px] mix-blend-screen opacity-50" />
-            </div>
-
-            {/* Network Visualization Background */}
-            <div className="absolute inset-0 z-0 opacity-30">
-                <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-                            <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.1)" />
-                        </pattern>
-                        <linearGradient id="route-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#10b981" stopOpacity="0" />
-                            <stop offset="50%" stopColor="#14b8a6" stopOpacity="1" />
-                            <stop offset="100%" stopColor="#0f766e" stopOpacity="0" />
-                        </linearGradient>
-                    </defs>
-                    
-                    {/* Grid */}
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-                    
-                    {/* Abstract Highway Lines */}
-                    <g className="stroke-teal-500/20" fill="none" strokeWidth="1">
-                        <path d="M-100,300 C200,250 400,450 800,300 C1200,150 1400,350 1800,300" />
-                        <path d="M-100,500 C300,450 500,250 900,400 C1300,550 1500,350 1900,500" />
-                    </g>
-                    
-                    {/* Animated Route Line */}
-                    <motion.path 
-                        d="M-100,300 C200,250 400,450 800,300 C1200,150 1400,350 1800,300" 
-                        fill="none" 
-                        stroke="url(#route-grad)" 
-                        strokeWidth="2"
-                        initial={{ pathLength: 0, opacity: 0 }}
-                        animate={{ pathLength: 1, opacity: 1 }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                    />
-                    
-                    {/* Nodes (Cities) */}
-                    <circle cx="250" cy="285" r="4" fill="#14b8a6" className="animate-pulse" />
-                    <circle cx="600" cy="390" r="4" fill="#10b981" className="animate-pulse" style={{ animationDelay: '1s' }} />
-                    <circle cx="1050" cy="210" r="4" fill="#0f766e" className="animate-pulse" style={{ animationDelay: '2s' }} />
-                </svg>
-
-                {/* Floating Particles (Trucks) */}
-                <motion.div 
-                    className="absolute top-[285px] left-[250px] w-2 h-2 bg-white rounded-full shadow-[0_0_10px_#fff]"
-                    animate={{ 
-                        x: [0, 350, 800], 
-                        y: [0, 105, -75],
-                        opacity: [0, 1, 0]
-                    }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                />
-            </div>
-
-            <div className="relative z-10 w-full max-w-6xl mx-auto px-6 pt-20 pb-12 flex flex-col items-center text-center">
+        <>
+            <section className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#0B1120] border-b border-slate-800/80 pt-8 sm:pt-12 pb-16 sm:pb-20 lg:pb-24">
                 
-                <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-teal-500/20 bg-teal-500/10"
-                >
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
-                    </span>
-                    <span className="text-xs font-medium text-teal-300 tracking-wide uppercase">AI-Powered Logistics Platform</span>
-                </motion.div>
+                {/* Layered Background Ambience */}
+                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-industrial-grid opacity-20" />
+                    <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#00E5C3]/10 rounded-full blur-[140px] pointer-events-none" />
+                    <div className="absolute top-1/2 -right-40 w-[450px] h-[450px] bg-[#FF6B35]/10 rounded-full blur-[160px] pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0B1120]/40 to-[#0B1120]" />
+                </div>
 
-                <motion.h1 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.1, ease: "easeOut" }}
-                    className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.1] mb-8 max-w-4xl"
-                >
-                    Move Smarter.<br />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-200 to-emerald-400">
-                        Drive Further.
-                    </span>
-                </motion.h1>
+                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+                        
+                        {/* LEFT COLUMN: Authority, Value Proposition, Anchored CTAs */}
+                        <div className="lg:col-span-7 flex flex-col items-start text-left">
+                            
+                            {/* Simple, Clear Badge */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, ease: 'easeOut' }}
+                                className="mb-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full shimmer-badge shadow-[0_0_15px_rgba(0,229,195,0.15)]"
+                            >
+                                <Sparkles className="h-3.5 w-3.5 text-[#00E5C3]" />
+                                <span className="text-[11px] font-bold text-[#00E5C3] tracking-wider uppercase">
+                                    {t('hero_badge')}
+                                </span>
+                            </motion.div>
 
-                <motion.p 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-                    className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-12 font-light leading-relaxed"
-                >
-                    Logistics intelligence that connects trucks, drivers and businesses — helping every journey become more efficient, transparent, and human.
-                </motion.p>
+                            {/* Left-Aligned Headline */}
+                            <motion.h1
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="visible"
+                                className="text-fluid-hero font-extrabold text-white tracking-tight leading-[1.08] mb-6 font-space"
+                            >
+                                <motion.span variants={wordVariants} className="inline-block mr-2 text-white">
+                                    {t('hero_h1_1')}
+                                </motion.span>
+                                <br />
+                                <motion.span
+                                    variants={wordVariants}
+                                    className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-[#00E5C3] via-teal-300 to-emerald-400"
+                                >
+                                    {t('hero_h1_2')}
+                                </motion.span>
+                            </motion.h1>
 
-                <motion.div 
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                    className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
-                >
-                    <Link href="/auth/register">
-                        <button className="w-full sm:w-auto px-8 py-4 bg-teal-600 hover:bg-teal-500 text-white font-medium rounded-lg transition-all duration-300 flex items-center justify-center gap-2 group shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)]">
-                            Get Started
-                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                    </Link>
-                    <Link href="#problem">
-                        <button className="w-full sm:w-auto px-8 py-4 bg-slate-900/80 hover:bg-slate-800 text-slate-200 font-medium rounded-lg border border-slate-800 hover:border-slate-700 transition-all duration-300 flex items-center justify-center gap-2">
-                            Explore TruckNet
-                        </button>
-                    </Link>
-                </motion.div>
-            </div>
-            
-            {/* Subtle Gradient Fade to Next Section */}
-            <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-slate-50 to-transparent z-10" />
-        </section>
+                            {/* Easy, Simple, High-Value Sub-Headline */}
+                            <motion.p
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.35, ease: 'easeOut' }}
+                                className="text-base sm:text-lg lg:text-xl text-[#94A3B8] font-normal leading-relaxed max-w-xl mb-8"
+                            >
+                                {t('hero_sub')}
+                            </motion.p>
+
+                            {/* Anchored Business CTAs */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 16 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.45, ease: 'easeOut' }}
+                                className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 mb-10"
+                            >
+                                <Link
+                                    href="/auth/register"
+                                    className="group relative inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-bold text-[#0B1120] bg-[#00E5C3] hover:bg-[#05f0cd] transition-all duration-200 shadow-[0_0_25px_rgba(0,229,195,0.4)] hover:shadow-[0_0_35px_rgba(0,229,195,0.65)] hover:scale-[1.03] active:scale-[0.97] min-h-[48px]"
+                                >
+                                    <span>{t('btn_start_free')}</span>
+                                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                                </Link>
+
+                                <Link
+                                    href="#how-it-works"
+                                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-base font-semibold text-slate-200 hover:text-white border border-slate-700 hover:border-[#00E5C3]/60 bg-slate-900/60 hover:bg-slate-800/80 transition-all duration-200 hover:shadow-[0_0_20px_rgba(0,229,195,0.15)] min-h-[48px]"
+                                >
+                                    <span>{t('btn_how_it_works')}</span>
+                                    <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-white" />
+                                </Link>
+
+                                <button
+                                    onClick={() => setIsDemoOpen(true)}
+                                    type="button"
+                                    className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold text-slate-300 hover:text-[#00E5C3] transition-colors group sm:ml-2 min-h-[44px]"
+                                >
+                                    <div className="h-7 w-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center group-hover:border-[#00E5C3] group-hover:bg-teal-500/10 transition-colors">
+                                        <Play className="h-3 w-3 text-[#00E5C3] fill-current" />
+                                    </div>
+                                    <span>{t('btn_watch_demo')}</span>
+                                </button>
+                            </motion.div>
+
+                            {/* Trust Bar */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.6, delay: 0.6 }}
+                                className="w-full pt-6 border-t border-slate-800/80"
+                            >
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Shield className="h-4 w-4 text-[#00E5C3]" />
+                                    <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                                        {t('trust_bar_label')}
+                                    </span>
+                                </div>
+
+                                <div className="relative overflow-hidden w-full max-w-lg py-1">
+                                    <div className="animate-marquee flex items-center gap-8">
+                                        {[...TRUST_LOGOS, ...TRUST_LOGOS].map((item, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex items-center gap-2 text-xs text-slate-300 whitespace-nowrap bg-slate-900/60 px-3 py-1.5 rounded-lg border border-slate-800"
+                                            >
+                                                <span className="h-1.5 w-1.5 rounded-full bg-[#00E5C3]" />
+                                                <span className="text-white font-medium">{item.name}</span>
+                                                <span className="text-slate-500">•</span>
+                                                <span className="text-slate-400">{item.corridor}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Interactive Live Logistics Visual */}
+                        <div className="lg:col-span-5 w-full flex items-center justify-center">
+                            <HeroVisual3D />
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <DemoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
+        </>
     );
 }

@@ -10,8 +10,8 @@ const MONGO_OPTIONS = {
     serverSelectionTimeoutMS: 10_000,   // Fail fast if Atlas is unreachable
     heartbeatFrequencyMS: 30_000,       // Ping Atlas every 30s to maintain connection
     socketTimeoutMS: 45_000,            // Wait 45s before treating a socket as dead
-    maxPoolSize: 10,                    // Max simultaneous connections
-    minPoolSize: 2,                     // Keep at least 2 connections warm
+    maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE || '50', 10), // Max simultaneous connections for high traffic
+    minPoolSize: parseInt(process.env.MONGO_MIN_POOL_SIZE || '5', 10),  // Keep pool warm
     retryWrites: true,
     retryReads: true,
 };
@@ -22,7 +22,10 @@ export const connectMongoose = async (): Promise<void> => {
     try {
         await mongoose.connect(env.DATABASE_URL, MONGO_OPTIONS);
         // SECURITY: Never log the connection string itself — it contains credentials
-        logger.info('MongoDB connected successfully');
+        logger.info('MongoDB connected successfully', {
+            maxPoolSize: MONGO_OPTIONS.maxPoolSize,
+            minPoolSize: MONGO_OPTIONS.minPoolSize,
+        });
     } catch (err: any) {
         logger.error('MongoDB initial connection failed', { error: err.message });
         // Fail fast on startup — app cannot function without DB
@@ -66,23 +69,16 @@ mongoose.connection.on('error', (err) => {
     logger.error('MongoDB runtime error', { error: err.message });
 });
 
-// Graceful shutdown — close DB connection cleanly
-process.on('SIGINT', async () => {
+// Helper for unified graceful shutdown called from app.ts
+export const closeMongoose = async (): Promise<void> => {
     try {
+        if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = null;
+        }
         await mongoose.connection.close();
-        logger.info('MongoDB connection closed on app shutdown (SIGINT)');
+        logger.info('MongoDB connection closed gracefully');
     } catch (err: any) {
-        logger.error('Error closing MongoDB on shutdown', { error: err.message });
+        logger.error('Error closing MongoDB during shutdown', { error: err.message });
     }
-    process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-    try {
-        await mongoose.connection.close();
-        logger.info('MongoDB connection closed on app shutdown (SIGTERM)');
-    } catch (err: any) {
-        logger.error('Error closing MongoDB on shutdown', { error: err.message });
-    }
-    // Don't exit — let Express handle SIGTERM gracefully
-});
+};

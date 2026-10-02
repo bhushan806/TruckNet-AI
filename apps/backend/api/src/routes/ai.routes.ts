@@ -1,13 +1,12 @@
 import { Router } from 'express';
 import * as aiController from '../controllers/ai.controller';
+import { protect, optionalAuth } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// Unified Endpoint
+// AI Intelligence Endpoints
 router.post('/insights', aiController.getInsights);
+router.post('/sos', optionalAuth, aiController.triggerSos);
 router.post('/seed', aiController.seedData);
-
-// Keep existing routes if needed, but for now we focus on the unified one.
-// If frontend needs specific calls, we can add them back later wrapping the service.
 
 export default router;

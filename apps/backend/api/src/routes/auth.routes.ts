@@ -28,8 +28,13 @@ router.get('/me', protect, authController.getMe);
 // ── FIX: GET /drivers — was unauthenticated, now requires OWNER or ADMIN role ──
 router.get('/drivers', protect, authorize('OWNER', 'ADMIN'), authController.getDrivers);
 
-// ── Password Reset ──
+// ── Password Management ──
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
+router.patch('/change-password', protect, authController.changePassword);
+
+// ── Phone + OTP Auth (new — alongside email/password) ──
+router.post('/otp/send', authController.sendOtp);
+router.post('/otp/verify', authController.verifyOtp);
 
 export default router;

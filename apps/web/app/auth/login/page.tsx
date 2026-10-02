@@ -43,10 +43,9 @@ export default function LoginPage() {
         setSubmitting(true);
         try {
             const res = await api.post('/auth/login', { email: email.trim(), password });
-            // NOTE: accessToken is in an HTTP-only cookie set by the backend — NOT in the body.
-            const { user: userData } = res.data.data;
-            // login() sets state, sets indicator cookie, and redirects to the correct dashboard
-            login(userData);
+            const { user: userData, token } = res.data.data;
+            // login() sets state, sets indicator cookie, saves token fallback, and redirects
+            login(userData, token);
         } catch (err: any) {
             const msg = err.response?.data?.message || 'Invalid email or password. Please try again.';
             setError(msg);
@@ -168,6 +167,15 @@ export default function LoginPage() {
                         Don't have an account?{' '}
                         <Link href="/auth/register" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
                             Create one
+                        </Link>
+                    </div>
+
+                    <div className="mt-3 text-center">
+                        <Link
+                            href="/auth/otp-login"
+                            className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                        >
+                            📱 Login with OTP instead
                         </Link>
                     </div>
                 </div>

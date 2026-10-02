@@ -9,19 +9,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, ChevronRight, Truck, MapPin, IndianRupee, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 export default function PostLoadPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const [formData, setFormData] = useState({
         pickupCity: '',
         dropCity: '',
-        truckType: '',
-        materialType: '',
-        weight: '',
-        price: 24500 // AI recommended default
+        truckType: 'taurus_10',
+        materialType: 'Cement',
+        weight: '35',
+        price: 32000
     });
 
     const steps = [
@@ -31,16 +33,50 @@ export default function PostLoadPage() {
         { id: 4, title: "Review & Pay", icon: CheckCircle2 }
     ];
 
-    const nextStep = () => setStep(step + 1);
-    const prevStep = () => setStep(step - 1);
+    const nextStep = () => {
+        setSubmitError('');
+        if (step === 1 && (!formData.pickupCity.trim() || !formData.dropCity.trim())) {
+            setSubmitError('Please enter both pickup and destination locations.');
+            return;
+        }
+        if (step === 2 && (!formData.weight || parseFloat(formData.weight) <= 0)) {
+            setSubmitError('Please enter a valid weight in tons.');
+            return;
+        }
+        setStep(step + 1);
+    };
+    const prevStep = () => { setSubmitError(''); setStep(step - 1); };
 
     const handleSubmit = async () => {
         setLoading(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setLoading(false);
-        alert("Load Posted Successfully!");
-        router.push('/dashboard/customer/tracking/123'); // Redirect to tracking mock
+        setSubmitError('');
+        try {
+            // Map truckType to standardized body type
+            const bodyTypeMap: Record<string, string> = {
+                'tata_ace': 'OPEN_HIGH_BED',
+                'eicher_19': 'OPEN_HIGH_BED',
+                'taurus_10': 'CEMENT_BULKER'
+            };
+
+            await api.post('/loads', {
+                source: formData.pickupCity,
+                destination: formData.dropCity,
+                sourceCity: formData.pickupCity,
+                destinationCity: formData.dropCity,
+                weight: parseFloat(formData.weight) || 35,
+                goodsType: formData.materialType || 'Cement',
+                requiredBodyType: bodyTypeMap[formData.truckType] || 'CEMENT_BULKER',
+                price: Number(formData.price) || 32000,
+                vehicleType: 'Heavy Truck'
+            });
+
+            alert('Load posted to live marketplace successfully! Fleet owners are being notified.');
+            router.push('/dashboard/customer');
+        } catch (err: any) {
+            setSubmitError(err.response?.data?.message || 'Failed to post load. Please verify details.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -73,6 +109,12 @@ export default function PostLoadPage() {
                     <CardDescription>Step {step} of 4</CardDescription>
                 </CardHeader>
                 <CardContent className="min-h-[300px]">
+                    {submitError && (
+                        <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 mb-6 animate-in fade-in">
+                            <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                            <span>{submitError}</span>
+                        </div>
+                    )}
 
                     {/* STEP 1: ROUTE */}
                     {step === 1 && (

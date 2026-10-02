@@ -7,9 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, MapPin, Calendar, Truck, User, Package, Weight } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Truck, User, Package, Weight, MessageCircle, Lock, FileText, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import TripConnectModal from '@/components/trip/TripConnectModal';
+import BiltyViewerModal from '@/components/trip/BiltyViewerModal';
+import PaymentModal from '@/components/payment/PaymentModal';
 
 export default function OwnerLoadsPage() {
     const [openLoads, setOpenLoads] = useState<any[]>([]);
@@ -20,6 +23,9 @@ export default function OwnerLoadsPage() {
     const [assigning, setAssigning] = useState<string | null>(null);
     const [selectedDriver, setSelectedDriver] = useState<string>('');
     const [selectedLoad, setSelectedLoad] = useState<any>(null);
+    const [selectedChatLoad, setSelectedChatLoad] = useState<any>(null);
+    const [selectedBiltyLoad, setSelectedBiltyLoad] = useState<any>(null);
+    const [selectedPaymentLoad, setSelectedPaymentLoad] = useState<any>(null);
     const [assignMode, setAssignMode] = useState(false);
 
     useEffect(() => {
@@ -134,6 +140,10 @@ export default function OwnerLoadsPage() {
                                             </Badge>
                                             <span className="font-bold text-lg text-green-600">₹{load.price}</span>
                                         </div>
+                                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 mt-1">
+                                            <span>TXN: <strong className="text-slate-800">{load.transactionId || 'TRX-' + (load._id || load.id).slice(-6).toUpperCase()}</strong></span>
+                                            <span className="text-[10px] text-emerald-600 font-sans font-medium">🛡️ Available</span>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="space-y-2">
@@ -200,6 +210,10 @@ export default function OwnerLoadsPage() {
                                             </Badge>
                                             <span className="font-bold text-lg text-green-600">₹{load.price}</span>
                                         </div>
+                                        <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 mt-1">
+                                            <span>TXN: <strong className="text-slate-800">{load.transactionId || 'TRX-' + (load._id || load.id).slice(-6).toUpperCase()}</strong></span>
+                                            <span className="text-[10px] text-blue-600 font-sans font-medium">🔒 Booked</span>
+                                        </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="space-y-2">
@@ -231,6 +245,33 @@ export default function OwnerLoadsPage() {
                                                 <User className="h-4 w-4 mr-2" /> Assign Driver
                                             </Button>
                                         )}
+
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-blue-700 border-blue-200 hover:bg-blue-50 text-xs font-semibold"
+                                            onClick={() => setSelectedChatLoad(load)}
+                                        >
+                                            <MessageCircle className="h-3.5 w-3.5 mr-1.5" /> Direct Contact & Live Chat
+                                        </Button>
+
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-emerald-800 border-emerald-300 hover:bg-emerald-50 text-xs font-semibold"
+                                            onClick={() => setSelectedBiltyLoad(load)}
+                                        >
+                                            <FileText className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> Statutory Bilty (LR) & Documents
+                                        </Button>
+
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full text-indigo-700 border-indigo-200 hover:bg-indigo-50 text-xs font-semibold"
+                                            onClick={() => setSelectedPaymentLoad(load)}
+                                        >
+                                            <CreditCard className="h-3.5 w-3.5 mr-1.5 text-indigo-600" /> Escrow & Payment Settlement
+                                        </Button>
 
                                         {load.driverId && (
                                             <div className="pt-2 border-t text-sm">
@@ -294,6 +335,31 @@ export default function OwnerLoadsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Direct Contact & Real-Time Chat Modal */}
+            <TripConnectModal
+                isOpen={!!selectedChatLoad}
+                onClose={() => setSelectedChatLoad(null)}
+                loadId={selectedChatLoad?._id || selectedChatLoad?.id}
+                loadIdentifier={selectedChatLoad?.transactionId || selectedChatLoad?.loadNumber || selectedChatLoad?._id || selectedChatLoad?.id}
+            />
+
+            {/* Statutory Indian Bilty / LR Viewer */}
+            <BiltyViewerModal
+                isOpen={!!selectedBiltyLoad}
+                onClose={() => setSelectedBiltyLoad(null)}
+                loadId={selectedBiltyLoad?._id || selectedBiltyLoad?.id}
+                transactionId={selectedBiltyLoad?.transactionId}
+            />
+
+            {/* Online UPI & Escrow Payment Modal */}
+            <PaymentModal
+                isOpen={!!selectedPaymentLoad}
+                onClose={() => setSelectedPaymentLoad(null)}
+                loadId={selectedPaymentLoad?._id || selectedPaymentLoad?.id}
+                transactionId={selectedPaymentLoad?.transactionId}
+                onPaymentSuccess={fetchData}
+            />
         </div>
     );
 }

@@ -10,13 +10,15 @@ build/
 .next/
 out/
 
-# Environment files
+# Environment files & Secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.production
+.env*
+!.env.example
+*.pem
+*.key
+*.cert
+credentials.json
+client_secret*.json
 
 # Logs
 logs/

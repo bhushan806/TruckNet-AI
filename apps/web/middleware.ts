@@ -21,6 +21,7 @@ const PROTECTED_PREFIXES = [
 const AUTH_PATHS = [
     '/auth/login',
     '/auth/register',
+    '/auth/otp-login',
 ];
 
 export function middleware(request: NextRequest) {
@@ -52,5 +53,6 @@ export const config = {
         '/profile/:path*',
         '/auth/login',
         '/auth/register',
+        '/auth/otp-login',
     ],
 };

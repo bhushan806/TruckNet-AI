@@ -57,6 +57,29 @@ export const createLoad = async (req: AuthRequest, res: Response, next: NextFunc
     }
 };
 
+// GET /api/loads/:loadId (Public tracking or authenticated details)
+export const getLoadById = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const identifier = req.params.loadId || req.params.identifier;
+        let load = await loadService.getLoadById(identifier);
+
+        // If unauthenticated visitor tracking the load, mask personal customer contact info
+        if (!req.user && load) {
+            const sanitizedLoad: any = { ...load };
+            if (sanitizedLoad.customerId && typeof sanitizedLoad.customerId === 'object') {
+                sanitizedLoad.customerId = {
+                    name: sanitizedLoad.customerId.name || 'Verified Customer',
+                };
+            }
+            return res.status(200).json({ status: 'success', data: sanitizedLoad });
+        }
+
+        res.status(200).json({ status: 'success', data: load });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // OWNER: Browse available OPEN loads (paginated)
 // FIX: Customer email/phone no longer included (was PII leak to all owners)
 export const getOpenLoads = async (req: AuthRequest, res: Response, next: NextFunction) => {

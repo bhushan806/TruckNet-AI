@@ -162,6 +162,7 @@ interface DostResponse {
         loadSharing?: object;
         insights?: object;
         routeAdvanced?: object;
+        trucks?: any[];
     };
     predictiveIntelligence?: PredictiveIntelligenceContext;  // Predictive intelligence data
 }
@@ -261,7 +262,13 @@ async function getDatabaseContext(userId: string, role: string): Promise<object>
                 .sort({ createdAt: -1 })
                 .limit(5)
                 .lean();
-            return { recentBookings };
+
+            const liveAvailableTrucks = await VehicleModel.find({ status: 'AVAILABLE' })
+                .limit(6)
+                .select('number type bodyType capacity homeCity baseRatePerKm')
+                .lean();
+
+            return { recentBookings, liveAvailableTrucks };
         }
 
         if (role === 'DRIVER') {
@@ -377,6 +384,51 @@ async function fetchStructuredData(module: string, role: string, message: string
                     const result = await optimizeLoadSharing(loadItems, trucks);
                     structuredData.loadSharing = result;
                 })().catch(e => logger.warn('Structured load sharing failed', { error: (e as any).message }))
+            );
+        }
+
+        // ── Live Truck Search for real-time inventory queries ──
+        const isTruckSearch = /\b(truck|gaadi|vehicle|lorry|bulker|trailer|find|search|dhundh|chahiye|need|available|load|cement|steel|capacity)\b/i.test(message);
+        if (isTruckSearch || module === 'booking') {
+            tasks.push(
+                (async () => {
+                    const capMatch = message.match(/(\d+(?:\.\d+)?)\s*(?:ton|tons|tonne|t\b)/i);
+                    const requestedCapacity = capMatch ? parseFloat(capMatch[1]) : 0;
+
+                    const isCement = /cement/i.test(message);
+                    const isSteel = /steel|iron|rod|pipe|coil/i.test(message);
+                    const isLiquid = /liquid|oil|chemical|fuel|milk/i.test(message);
+
+                    const query: any = { status: 'AVAILABLE' };
+                    if (requestedCapacity > 0) {
+                        query.capacity = { $gte: requestedCapacity };
+                    }
+                    if (isCement) {
+                        query.bodyType = { $in: ['CEMENT_BULKER', 'OPEN_HIGH_BED', 'FLATBED'] };
+                    } else if (isSteel) {
+                        query.bodyType = { $in: ['FLATBED', 'OPEN_HIGH_BED'] };
+                    } else if (isLiquid) {
+                        query.bodyType = 'TANKER_LIQUID';
+                    }
+
+                    const availableTrucks = await VehicleModel.find(query)
+                        .populate('driverId')
+                        .limit(4)
+                        .lean();
+
+                    if (availableTrucks.length > 0) {
+                        structuredData.trucks = availableTrucks.map(v => ({
+                            vehicleId: v._id.toString(),
+                            vehicleNumber: v.number,
+                            bodyType: (v as any).bodyType || 'OPEN_HIGH_BED',
+                            capacity: v.capacity,
+                            homeCity: (v as any).homeCity || 'Mumbai',
+                            baseRatePerKm: (v as any).baseRatePerKm || 28,
+                            driverRating: (v.driverId as any)?.rating || 4.8,
+                            status: v.status
+                        }));
+                    }
+                })().catch(e => logger.warn('Live truck search failed', { error: (e as any).message }))
             );
         }
 
@@ -567,6 +619,12 @@ export async function chat(params: DostChatParams): Promise<DostResponse> {
             if (ls.combinations?.length > 0) {
                 supplements.push(`\n🚛 Load Sharing: ${ls.combinations.length} optimized groups, ~${ls.totalSavingsKm}km savings`);
             }
+        }
+        if (structuredData.trucks && structuredData.trucks.length > 0) {
+            supplements.push(
+                `\n\n🚛 **Real-Time Available Trucks Found (${structuredData.trucks.length}):**\n` +
+                structuredData.trucks.map((t: any) => `• **${t.vehicleNumber}** — ${t.capacity}T ${t.bodyType} | ₹${t.baseRatePerKm}/km | Base: ${t.homeCity} (★${t.driverRating})`).join('\n')
+            );
         }
 
         if (supplements.length > 0) {

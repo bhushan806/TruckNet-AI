@@ -52,6 +52,15 @@ const envSchema = z.object({
     // NEVER commit real values to Git. NEVER expose to the frontend.
     ADMIN_EMAIL: z.string().email('ADMIN_EMAIL must be a valid email').optional(),
     ADMIN_PASSWORD: z.string().min(12, 'ADMIN_PASSWORD must be at least 12 characters').optional(),
+
+    // ── OTP Authentication ──
+    OTP_PROVIDER: z.enum(['console', 'twilio', 'msg91']).default('console'),
+    OTP_EXPIRY_MS: z.string().default('300000'),  // 5 minutes
+
+    // Twilio-specific (only required if OTP_PROVIDER=twilio)
+    TWILIO_ACCOUNT_SID: z.string().optional(),
+    TWILIO_AUTH_TOKEN: z.string().optional(),
+    TWILIO_PHONE_NUMBER: z.string().optional(),
 });
 
 const envVars = envSchema.safeParse(process.env);

@@ -50,3 +50,5 @@ export function rateLimiter(opts: { windowMs: number; max: number; message?: str
 export const authLimiter = rateLimiter({ windowMs: 60_000, max: 10, message: 'Too many auth attempts, try again in 1 minute' });
 export const loadAcceptLimiter = rateLimiter({ windowMs: 60_000, max: 5, message: 'Too many load acceptance attempts' });
 export const driverStatusLimiter = rateLimiter({ windowMs: 60_000, max: 10, message: 'Too many status updates' });
+export const paymentVerifyLimiter = rateLimiter({ windowMs: 60_000, max: 10, message: 'Too many payment verification attempts. Please wait 1 minute before retrying.' });
+export const paymentOrderLimiter = rateLimiter({ windowMs: 60_000, max: 20, message: 'Too many payment order requests. Please try again shortly.' });

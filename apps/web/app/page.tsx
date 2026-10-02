@@ -1,27 +1,25 @@
 'use client';
 
-// ── TruckNet India — Landing Page (Redesigned) ──
+// ── TruckNet India — Modern Industrial Tech Homepage ──
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Truck } from 'lucide-react';
 
-// Landing Page Modular Components
+// Modular High-Stakes Logistics Landing Components
 import { HeroSection } from '@/components/landing/HeroSection';
-import { ProblemSection } from '@/components/landing/ProblemSection';
-import { ZeroDeadMileage } from '@/components/landing/ZeroDeadMileage';
-import { TruckNetDostSection } from '@/components/landing/TruckNetDostSection';
-import { PredictiveMaintenance } from '@/components/landing/PredictiveMaintenance';
-import { DriverFirstSection } from '@/components/landing/DriverFirstSection';
-import { StatsSection } from '@/components/landing/StatsSection';
+import { StatsStrip } from '@/components/landing/StatsStrip';
+import { FeatureGrid } from '@/components/landing/FeatureGrid';
+import { HowItWorks } from '@/components/landing/HowItWorks';
+import { LiveOpsPreview } from '@/components/landing/LiveOpsPreview';
+import { EnterpriseTrust } from '@/components/landing/EnterpriseTrust';
 import { FinalCTA } from '@/components/landing/FinalCTA';
+import { Footer } from '@/components/landing/Footer';
 
 export default function HomePage() {
     const router = useRouter();
     const { user, loading } = useAuth();
 
-    // Preserve Auth routing functionality
+    // Preserve Auth routing redirect functionality for logged-in users
     useEffect(() => {
         if (!loading && user) {
             if (user.role === 'DRIVER') router.replace('/dashboard/driver');
@@ -31,54 +29,30 @@ export default function HomePage() {
     }, [user, loading, router]);
 
     return (
-        <main className="min-h-screen bg-[#050B14] text-white selection:bg-teal-500/30 selection:text-teal-200">
-            
+        <div className="min-h-screen bg-[#0B1120] text-[#F8FAFC] selection:bg-[#00E5C3]/30 selection:text-[#00E5C3] overflow-x-hidden">
+            {/* Hero Section: Split 60/40 Layout with 3D Logistics Terminal & Anchored CTAs */}
             <HeroSection />
-            <ProblemSection />
-            <ZeroDeadMileage />
-            <TruckNetDostSection />
-            <PredictiveMaintenance />
-            <DriverFirstSection />
-            <StatsSection />
+
+            {/* Real-Time Stats Strip: Scroll-Triggered Count-Up */}
+            <StatsStrip />
+
+            {/* Core Feature Grid: Businesses, Drivers, Fleet Owners with 3D Hover Lift */}
+            <FeatureGrid />
+
+            {/* How It Works: 3-Step Animated Timeline with Progress Line */}
+            <HowItWorks />
+
+            {/* Live Command Center Terminal: Interactive Order Book, Route Optimizer, Voice Co-Pilot */}
+            <LiveOpsPreview />
+
+            {/* Enterprise Trust: MoRTH Vahan APIs, NPCI Escrow, Multi-Region SLA */}
+            <EnterpriseTrust />
+
+            {/* Final Action CTA: High-Contrast Conversion Banner */}
             <FinalCTA />
 
-            {/* Footer Section */}
-            <footer className="border-t border-slate-800 py-12 px-6 bg-slate-950 relative z-20">
-                <div className="max-w-6xl mx-auto">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                        {/* Brand */}
-                        <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-teal-600 flex items-center justify-center">
-                                <Truck className="h-5 w-5 text-white" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-white text-sm">TruckNet India</p>
-                                <p className="text-slate-500 text-xs">AI-Powered Logistics</p>
-                            </div>
-                        </div>
-
-                        {/* Links */}
-                        <div className="flex flex-wrap justify-center gap-6 text-sm">
-                            {[
-                                { label: 'About', href: '#' },
-                                { label: 'Contact', href: '#' },
-                                { label: 'Privacy Policy', href: '#' },
-                                { label: 'Terms', href: '/rules' },
-                                { label: 'Find Vehicle', href: '/find-vehicle' },
-                            ].map((link, i) => (
-                                <Link key={i} href={link.href} className="text-slate-400 hover:text-white transition-colors">
-                                    {link.label}
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="border-t border-slate-800 mt-8 pt-8 text-center text-slate-500 text-sm">
-                        © {new Date().getFullYear()} TruckNet India. All rights reserved.
-                        <span className="block mt-1">Made for India's logistics network 🚛</span>
-                    </div>
-                </div>
-            </footer>
-        </main>
+            {/* Industrial B2B Footer */}
+            <Footer />
+        </div>
     );
 }

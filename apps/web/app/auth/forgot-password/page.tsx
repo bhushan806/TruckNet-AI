@@ -24,8 +24,9 @@ export default function ForgotPasswordPage() {
         try {
             const res = await api.post('/auth/forgot-password', { email });
             setSubmitted(true);
-            // For prototype: show the link directly
-            setResetLink(`/auth/reset-password?token=${res.data.data.resetToken}`);
+            if (res.data?.data?.resetToken) {
+                setResetLink(`/auth/reset-password?token=${res.data.data.resetToken}`);
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || 'Something went wrong');
         } finally {
@@ -49,12 +50,14 @@ export default function ForgotPasswordPage() {
                                 <CheckCircle2 className="h-5 w-5" />
                                 <p className="text-sm font-medium">Reset link sent!</p>
                             </div>
-                            <div className="p-4 bg-muted rounded-md text-xs break-all">
-                                <p className="font-semibold mb-1">Prototype Only (Click to reset):</p>
-                                <Link href={resetLink} className="text-primary hover:underline">
-                                    {typeof window !== 'undefined' ? window.location.origin : ''}{resetLink}
-                                </Link>
-                            </div>
+                            {resetLink && (
+                                <div className="p-4 bg-muted rounded-md text-xs break-all">
+                                    <p className="font-semibold mb-1">Direct Reset Link (Demo):</p>
+                                    <Link href={resetLink} className="text-primary hover:underline">
+                                        {typeof window !== 'undefined' ? window.location.origin : ''}{resetLink}
+                                    </Link>
+                                </div>
+                            )}
                             <Button asChild className="w-full">
                                 <Link href="/auth/login">Back to Login</Link>
                             </Button>

@@ -92,3 +92,69 @@ export const getMyDrivers = async (req: AuthRequest, res: Response, next: NextFu
         next(error);
     }
 };
+
+export const getNotifications = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ status: 'error', message: 'User not authenticated' });
+            return;
+        }
+
+        const driverProfile = await DriverProfileModel.findOne({ userId });
+
+        const notifications: Array<{
+            id: string;
+            title: string;
+            message: string;
+            type: 'info' | 'alert' | 'success';
+            read: boolean;
+            createdAt: string;
+        }> = [];
+
+        if (driverProfile) {
+            const { LoadModel } = await import('../models/mongoose/Load');
+            const assignedLoads = await LoadModel.find({
+                driverId: driverProfile._id,
+                status: { $in: ['ASSIGNED_TO_DRIVER', 'IN_TRANSIT'] },
+                isDeleted: { $ne: true },
+            }).sort({ updatedAt: -1 }).limit(5).lean();
+
+            for (const load of assignedLoads) {
+                notifications.push({
+                    id: `load_${load._id}`,
+                    title: load.status === 'ASSIGNED_TO_DRIVER' ? 'New Load Assigned! 🚚' : 'Active Shipment In Transit 🛣️',
+                    message: `Consignment from ${load.source} to ${load.destination} (${load.goodsType}, ${load.weight}T). Fare: ₹${load.price?.toLocaleString('en-IN')}.`,
+                    type: load.status === 'ASSIGNED_TO_DRIVER' ? 'alert' : 'info',
+                    read: false,
+                    createdAt: (load as any).updatedAt ? new Date((load as any).updatedAt).toISOString() : new Date().toISOString(),
+                });
+            }
+
+            if (!driverProfile.licenseNumber) {
+                notifications.push({
+                    id: 'doc_dl_pending',
+                    title: 'Driving License Update Needed 📄',
+                    message: 'Please complete your verified driver profile with your commercial license number for priority loads.',
+                    type: 'alert',
+                    read: false,
+                    createdAt: new Date().toISOString(),
+                });
+            }
+        }
+
+        // Always include operational confirmation
+        notifications.push({
+            id: 'system_welcome',
+            title: 'TruckNet 24/7 Operations Active 🛡️',
+            message: 'Satellite telemetry and TruckNet Dost AI are ready. Have a safe journey on Indian highways!',
+            type: 'info',
+            read: true,
+            createdAt: new Date(Date.now() - 3600000).toISOString(),
+        });
+
+        res.status(200).json({ status: 'success', data: notifications });
+    } catch (error) {
+        next(error);
+    }
+};

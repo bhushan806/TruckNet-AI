@@ -12,10 +12,19 @@ const auditEntrySchema = new mongoose.Schema({
 
 // ── Load schema ──
 const loadSchema = new mongoose.Schema({
+    loadNumber: { type: String, unique: true, sparse: true, index: true },
+    transactionId: { type: String, unique: true, sparse: true, index: true },
     source: { type: String, required: true },
     destination: { type: String, required: true },
+    sourceCity: { type: String, trim: true },
+    destinationCity: { type: String, trim: true },
     weight: { type: Number, required: true },
     goodsType: { type: String, required: true },
+    requiredBodyType: {
+        type: String,
+        enum: ['CEMENT_BULKER', 'FLATBED', 'OPEN_HIGH_BED', 'CONTAINER_CLOSED', 'TANKER_LIQUID', 'TIPPER_DUMPER', 'ANY'],
+        default: 'ANY'
+    },
     price: { type: Number, required: true },
     distance: { type: Number },
     vehicleType: { type: String, default: 'Truck' },
@@ -45,6 +54,20 @@ const loadSchema = new mongoose.Schema({
     timestamps: true,
     // Optimistic concurrency — Mongoose uses __v for version checks
     optimisticConcurrency: true,
+});
+
+// ── Auto-generate human-readable Load Number and Transaction ID ──
+loadSchema.pre('save', function (this: any) {
+    if (!this.loadNumber) {
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const rand = Math.floor(1000 + Math.random() * 9000);
+        this.loadNumber = `LOD-${today}-${rand}`;
+    }
+    if (!this.transactionId) {
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+        this.transactionId = `TRX-${today}-${rand}`;
+    }
 });
 
 // ── Compound indexes ──

@@ -33,11 +33,10 @@ export default function RegisterPage() {
 
         try {
             const res = await api.post('/auth/register', formData);
-            // NOTE: accessToken is in an HTTP-only cookie set by the backend — NOT in the body.
-            const { user } = res.data.data;
+            const { user, token } = res.data.data;
 
-            // login() sets state, sets indicator cookie, and automatically redirects to correct dashboard
-            login(user);
+            // login() sets state, indicator cookie, and localStorage token for cross-origin deployments
+            login(user, token);
 
         } catch (err: any) {
             setError(err.response?.data?.message || 'Registration failed');
@@ -109,6 +108,11 @@ export default function RegisterPage() {
                         </Button>
                         <div className="text-sm text-center text-muted-foreground">
                             Already have an account? <Link href="/auth/login" className="text-primary font-medium hover:underline">Sign in</Link>
+                        </div>
+                        <div className="text-sm text-center">
+                            <Link href="/auth/otp-login" className="text-emerald-500 font-medium hover:underline">
+                                📱 Register with OTP instead
+                            </Link>
                         </div>
                     </CardFooter>
                 </form>

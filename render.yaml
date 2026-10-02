@@ -26,29 +26,25 @@ services:
       - key: REDIS_URL
         sync: false
 
-  # AI Node Engine (separate service)
+  # AI Engine (Python FastAPI)
   - type: web
     name: trucknet-ai-engine
-    rootDir: apps/backend/ai-node-engine
-    runtime: node
+    rootDir: apps/ai_engine
+    runtime: python
     plan: starter
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: MONGODB_URI
-        sync: false
       - key: JWT_SECRET
-        sync: false
-      - key: GROQ_API_KEY
         sync: false
       - key: CORS_ORIGIN
         value: https://truck-net-ai-web.vercel.app
+      - key: HF_API_TOKEN
+        sync: false
 
   # Frontend Service (Next.js)
   - type: web
-    name: trucknet-ai
+    name: trucknet-web
     rootDir: apps/web
     runtime: node
     plan: starter
@@ -61,5 +57,5 @@ services:
         value: https://trucknet-ai.onrender.com/api
         # Backend API is at trucknet-ai.onrender.com (Express, returns JSON 404 on /)
       - key: NEXT_PUBLIC_AI_ENGINE_URL
-        value: https://trucknet-ai-engine.onrender.com/api
-        # /api suffix REQUIRED — Render service name: trucknet-ai-engine
+        value: https://trucknet-ai-engine.onrender.com
+        # Render service name: trucknet-ai-engine

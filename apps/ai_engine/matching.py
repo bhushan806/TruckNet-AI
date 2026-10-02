@@ -1,177 +1,192 @@
 import math
 from typing import List, Dict, Any
-from pydantic import BaseModel
 
 class MatchingEngine:
     def __init__(self):
-        # Weights for the scoring algorithm (Feature 2: Truck Owner AI)
+        # Weights for the scoring algorithm (Logistics Enterprise Grade)
         self.weights = {
-            "proximity": 0.30,  # 30%
-            "capacity": 0.20,   # 20%
-            "rating": 0.10,     # 10%
-            "backhaul": 0.40    # 40% (Most Important)
+            "proximity": 0.25,           # 25% (Driver close to pickup hub)
+            "capacity_fit": 0.25,        # 25% (Payload match without wasted tonnage)
+            "backhaul": 0.30,            # 30% (Empty return trip optimization)
+            "body_compatibility": 0.10,  # 10% (Specialized body type fit)
+            "rating": 0.10               # 10% (Driver reliability & safety record)
         }
 
     def _calculate_haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        """
-        Calculate the great circle distance between two points 
-        on the earth (specified in decimal degrees)
-        """
-        R = 6371  # radius of Earth in km
+        """Calculate great circle distance between two decimal coordinates in km."""
+        R = 6371  # Earth radius in km
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
-        a = (math.sin(dlat / 2) * math.sin(dlat / 2) +
+        a = (math.sin(dlat / 2) ** 2 +
              math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-             math.sin(dlon / 2) * math.sin(dlon / 2))
+             math.sin(dlon / 2) ** 2)
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        d = R * c
-        return d
+        return R * c
+
+    def _evaluate_body_compatibility(self, goods_type: str, body_type: str, required_body: str = "ANY") -> float:
+        """
+        Evaluates body type compatibility for Indian freight commodities.
+        Returns a score from 0 to 100.
+        """
+        goods = (goods_type or "").lower().strip()
+        body = (body_type or "").upper().strip()
+        req = (required_body or "ANY").upper().strip()
+
+        # Direct requirement match
+        if req != "ANY" and req == body:
+            return 100.0
+
+        # Dedicated tankers can ONLY carry liquids
+        if body == "TANKER_LIQUID":
+            if any(w in goods for w in ["liquid", "oil", "chemical", "petrol", "diesel", "milk", "water", "fuel"]):
+                return 100.0
+            return 0.0  # Liquid tanker cannot carry dry cargo
+
+        # Dedicated tippers can ONLY carry bulk aggregates/minerals
+        if body == "TIPPER_DUMPER":
+            if any(w in goods for w in ["sand", "gravel", "aggregate", "stone", "coal", "mining", "mud"]):
+                return 100.0
+            return 0.0  # Tipper cannot carry bagged goods, electronics, or cement bulk
+
+        # Commodity-specific rules
+        if "cement" in goods:
+            if "bulk" in goods or "loose" in goods:
+                return 100.0 if body == "CEMENT_BULKER" else 0.0
+            # Bagged cement: Open high bed or flatbed with tarpaulin
+            if body in ["OPEN_HIGH_BED", "FLATBED"]:
+                return 100.0
+            if body == "CEMENT_BULKER":
+                return 30.0
+            return 0.0
+
+        if any(w in goods for w in ["steel", "iron", "pipes", "coils", "tmt", "rods"]):
+            if body in ["FLATBED", "OPEN_HIGH_BED"]:
+                return 100.0
+            return 15.0
+
+        if any(w in goods for w in ["liquid", "oil", "chemical", "petrol", "diesel", "milk"]):
+            if body == "TANKER_LIQUID":
+                return 100.0
+            return 0.0  # Hazardous / liquid cannot go in open truck
+
+        if any(w in goods for w in ["sand", "gravel", "aggregate", "stone", "coal", "mining"]):
+            if body in ["TIPPER_DUMPER", "OPEN_HIGH_BED"]:
+                return 100.0
+            return 25.0
+
+        if any(w in goods for w in ["fmcg", "electronics", "retail", "pharma", "garments"]):
+            if body == "CONTAINER_CLOSED":
+                return 100.0
+            if body == "OPEN_HIGH_BED":
+                return 70.0  # Needs tarpaulin
+            return 30.0
+
+        # Default fallback compatibility
+        return 80.0
 
     def match_driver_to_load(self, load_request: Dict[str, Any], available_drivers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Feature 2: Truck Owner AI (Smart Load Matching)
-        Returns the Best Match drivers based on weighted scoring.
+        Production Load Matching Engine:
+        Evaluates available trucks against real logistics parameters:
+        Proximity, Capacity Fit, Backhaul (Home Base), Body Compatibility, and Driver Rating.
         """
         scored_drivers = []
-        
-        load_origin = load_request.get("origin")
-        load_dest = load_request.get("destination")
-        required_capacity = load_request.get("weight", 0)
-        # Assuming destination city is derived from destination lat/lng or provided
-        # For this logic, we need the driver's home city and load's destination city
-        # We will assume they are passed as strings or we estimate based on coords?
-        # The prompt says: "If driver.homeCity == load.destinationCity"
-        # I will check if these fields exist, otherwise I'll use coordinate proximity to home base as a proxy for "City Match"
-        
-        load_dest_city = load_request.get("destination_city", "Unknown")
+
+        load_origin = load_request.get("origin") or {"lat": 19.0760, "lng": 72.8777}
+        required_weight = float(load_request.get("weight", 0) or 0)
+        goods_type = load_request.get("goods_type", "General Cargo")
+        dest_city = str(load_request.get("destination_city", "")).lower().strip()
+        required_body = load_request.get("required_body_type", "ANY")
 
         for driver in available_drivers:
-            score = 0
             details = {}
+            driver_id = driver.get("driver_id") or driver.get("id") or "UNKNOWN"
+            driver_capacity = float(driver.get("capacity", 0) or 0)
+            driver_body = driver.get("body_type", driver.get("vehicle_type", "OPEN_HIGH_BED"))
+            driver_home = str(driver.get("home_city", "")).lower().strip()
 
-            # 1. Distance Weight (30%)
-            # Logic: If driver is <10km away, score is High.
-            driver_loc = driver.get("location")
-            distance = self._calculate_haversine(
-                load_origin["lat"], load_origin["lng"],
-                driver_loc["lat"], driver_loc["lng"]
+            # ── HARD FILTER 1: Capacity Check ──
+            # A truck cannot take a load heavier than its registered capacity
+            if driver_capacity > 0 and required_weight > 0 and driver_capacity < required_weight:
+                continue  # Reject overloaded truck
+
+            # ── HARD FILTER 2: Body Compatibility ──
+            body_score = self._evaluate_body_compatibility(goods_type, driver_body, required_body)
+            if body_score <= 0:
+                continue  # Reject incompatible body (e.g. liquid tanker for bagged cement)
+
+            details["body_score"] = body_score
+
+            # ── 1. Proximity Weight (25%) ──
+            driver_loc = driver.get("location") or {"lat": 19.0760, "lng": 72.8777}
+            distance_km = self._calculate_haversine(
+                load_origin.get("lat", 19.0760), load_origin.get("lng", 72.8777),
+                driver_loc.get("lat", 19.0760), driver_loc.get("lng", 72.8777)
             )
-            
-            dist_score = 0
-            if distance < 10:
-                dist_score = 100 # High score
-            elif distance < 50:
-                dist_score = 70
-            elif distance < 100:
-                dist_score = 40
+
+            if distance_km < 15:
+                dist_score = 100.0
+            elif distance_km < 40:
+                dist_score = 80.0
+            elif distance_km < 80:
+                dist_score = 60.0
+            elif distance_km < 150:
+                dist_score = 30.0
             else:
-                dist_score = 10
-            
-            score += dist_score * self.weights["proximity"]
+                dist_score = 10.0
+
+            details["distance_km"] = round(distance_km, 1)
             details["distance_score"] = dist_score
-            details["distance_km"] = distance
 
-            # 2. Capacity Weight (20%)
-            # Logic: If driver truck size >= load size, score is High.
-            driver_capacity = driver.get("capacity", 0)
-            capacity_score = 0
-            if driver_capacity >= required_capacity:
-                capacity_score = 100
+            # ── 2. Capacity Fit Weight (25%) ──
+            # Best fit is 75% - 100% capacity utilization (efficient fuel usage)
+            if driver_capacity > 0 and required_weight > 0:
+                utilization = required_weight / driver_capacity
+                if 0.75 <= utilization <= 1.0:
+                    cap_score = 100.0
+                elif 0.50 <= utilization < 0.75:
+                    cap_score = 80.0
+                elif utilization < 0.50:
+                    cap_score = 55.0  # Excessive truck size for small load (diesel waste)
+                else:
+                    cap_score = 20.0
             else:
-                capacity_score = 0 # Cannot take load (or very low score)
-            
-            score += capacity_score * self.weights["capacity"]
-            details["capacity_score"] = capacity_score
+                cap_score = 70.0
 
-            # 3. Rating Weight (10%)
-            # Logic: Driver rating * 2
-            # Assuming rating is out of 5? If rating is 0-5, *2 gives 0-10, which is low.
-            # Maybe User meant 0-50 scaling? Or if rating is percentage?
-            # Prompt says: "Driver rating * 2".
-            # If rating is 4.5, score is 9. That is small compared to 100.
-            # Maybe the user implies the Contribution to the TOTAL score?
-            # Or maybe Rating is 0-50?
-            # Let's assume standard 5-star. 5 * 2 = 10.
-            # If the max score for this section is 100, then (Rating * 20) would make sense.
-            # But the user EXPLICITLY said "Driver rating * 2".
-            # I will follow instruction LITERALLY: score += (rating * 2) * weight?
-            # Or "Score = Rating * 2". If max rating is 5, max score is 10. 
-            # Weighted (10%) -> 1 point. That seems negligible.
-            # PROBABLY meant "Rating * 20" (to map 5->100).
-            # OR "Rating * 2" IS the score for this section (0-10) and then weighted? No, usually sections are 0-100.
-            # Let's look: "Rating Weight (10%): Driver rating * 2."
-            # If I have a 5 star driver. 5*2 = 10 points. 10 * 0.1 = 1 point added to total.
-            # If I have a distance < 10km. 100 points * 0.3 = 30 points.
-            # This makes rating irrelevant.
-            # INTERPRETATION: Maybe rating is on 0-50 scale?
-            # OR maybe "Rating * 2" means "Multiply rating by 20"?
-            # Let's assume "Rating * 20" to normalize 5 -> 100.
-            # Wait, "Driver rating * 2" might mean "Double the rating value" -> 10/10 scale?
-            # I will use `(rating / 5) * 100` as a safe "High Score" interpretation, but I should stick to the specific logic if possible.
-            # Let's compromise: The prompt "Logic: Driver rating * 2" is likely a typo for "20" OR it expects the rating to be higher.
-            # I'll stick to a normalized 0-100 logic for consistency with other weights, 
-            # effectively `(rating * 20)` if rating is 0-5.
-            # BUT, to be "Agentic" and safe, maybe I should just do `rating * 20` and note it.
-            # ACTUALLY, checking the line: "Rating Weight (10%): Driver rating * 2."
-            # Maybe the user meant `score = rating * 2` where `score` is the final contribution?
-            # No, "Sort by this Score".
-            # I will implement `rating * 20` to map 0-5 to 0-100.
-            
-            rating = driver.get("rating", 0)
-            rating_score = rating * 20 # 5 star -> 100
-            score += rating_score * self.weights["rating"]
-            details["rating_score"] = rating_score
+            details["capacity_score"] = cap_score
 
-            # 4. Backhaul Weight (40%)
-            # Logic: If driver.homeCity == load.destinationCity, add maximum points.
-            driver_home_city = driver.get("home_city", "")
-            # We assume driver dict has "home_city" or similar
-            
-            backhaul_score = 0
-            if driver_home_city and load_dest_city and driver_home_city.lower() == load_dest_city.lower():
-                backhaul_score = 100
-            
-            score += backhaul_score * self.weights["backhaul"]
+            # ── 3. Backhaul / Home Base Match (30%) ──
+            # Massive incentive: Truck returning towards its home depot
+            backhaul_score = 30.0  # Base score for general availability
+            if driver_home and dest_city:
+                if driver_home in dest_city or dest_city in driver_home:
+                    backhaul_score = 100.0  # Perfect return load match!
+                elif any(part in dest_city for part in driver_home.split()):
+                    backhaul_score = 85.0
+
             details["backhaul_score"] = backhaul_score
 
-            # Final Compilation
+            # ── 4. Driver Rating (10%) ──
+            rating = float(driver.get("rating", 4.5) or 4.5)
+            rating_score = min(max(rating * 20.0, 0.0), 100.0)
+            details["rating_score"] = rating_score
+
+            # ── Final Weighted Composite Score (0 - 100) ──
+            total_score = (
+                (dist_score * self.weights["proximity"]) +
+                (cap_score * self.weights["capacity_fit"]) +
+                (backhaul_score * self.weights["backhaul"]) +
+                (body_score * self.weights["body_compatibility"]) +
+                (rating_score * self.weights["rating"])
+            )
+
             scored_drivers.append({
-                "driver_id": driver.get("id"),
-                "total_score": round(score, 2),
+                "driver_id": driver_id,
+                "total_score": round(total_score, 1),
                 "details": details,
                 "driver_data": driver
             })
 
-        # Sort by score descending and return "Best Match"
+        # Sort descending by composite score
         scored_drivers.sort(key=lambda x: x["total_score"], reverse=True)
-        
         return scored_drivers
-
-# Example Usage Logic (if run directly)
-if __name__ == "__main__":
-    engine = MatchingEngine()
-    
-    dummy_load = {
-        "origin": {"lat": 19.0760, "lng": 72.8777}, # Mumbai
-        "destination": {"lat": 18.5204, "lng": 73.8567}, # Pune
-        "weight": 10.0
-    }
-    
-    dummy_drivers = [
-        {
-            "id": "D001", 
-            "location": {"lat": 19.0500, "lng": 72.9000}, # Nearby Mumbai
-            "capacity": 10.0, # Perfect fit
-            "rating": 4.8,
-            "home_base": {"lat": 18.5204, "lng": 73.8567} # Lives in Pune (Great match)
-        },
-        {
-            "id": "D002", 
-            "location": {"lat": 19.2000, "lng": 72.8000}, # Further away
-            "capacity": 20.0, # Too big (wasteful)
-            "rating": 4.5
-        }
-    ]
-    
-    results = engine.match_driver_to_load(dummy_load, dummy_drivers)
-    print("Top Matches:", results)

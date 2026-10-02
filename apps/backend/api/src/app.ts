@@ -23,6 +23,8 @@ import { LoadService } from './services/load.service';
 import { rateLimiter } from './middlewares/rateLimiter';
 import { trafficMonitorMiddleware } from './utils/trafficMonitor';
 import { seedAdmin } from './config/seedAdmin';
+import compression from 'compression';
+import { sanitizeRequest } from './middlewares/requestSanitizer';
 
 
 process.on('uncaughtException', (error) => {
@@ -51,8 +53,11 @@ import documentRoutes from './routes/document.routes';
 import dostRoutes from './routes/dost.routes';
 import predictiveRoutes from './routes/predictive.routes';
 import adminRoutes from './routes/admin.routes';
+import tripRoutes from './routes/trip.routes';
+import driverInviteRoutes from './routes/driver-invite.routes';
+import paymentRoutes from './routes/payment.routes';
 
-import { connectMongoose } from './config/mongoose';
+import { connectMongoose, closeMongoose } from './config/mongoose';
 import { initSocket } from './config/socket';
 
 // Connect Mongoose (resilient with auto-reconnect)
@@ -61,14 +66,21 @@ connectMongoose().then(() => {
     seedAdmin();
 });
 
-
 const app = express();
 const httpServer = createServer(app);
+
+// ── Reverse Proxy Trust (Required for Render, Vercel, AWS, Cloudflare) ──
+// Allows accurate client IP resolution for rate limiting, security auditing & GeoIP
+app.set('trust proxy', 1);
 
 // Initialize Socket.io (JWT-authenticated — see config/socket.ts)
 initSocket(httpServer);
 
-// ── FIX C-3: Security Headers (Helmet with tightened CSP) ──
+// ── High-Traffic Compression Middleware (Gzip/Deflate) ──
+// Compresses JSON and response bodies by up to 70-80%, dramatically reducing bandwidth
+app.use(compression());
+
+// ── Security Headers (Helmet with Production CSP) ──
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -76,6 +88,9 @@ app.use(helmet({
             scriptSrc: ["'self'"],
             connectSrc: [
                 "'self'",
+                "https:",
+                "wss:",
+                "ws:",
                 ...(env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map(o => o.trim()) : []),
             ],
             imgSrc: ["'self'", 'data:', 'https:'],
@@ -85,7 +100,7 @@ app.use(helmet({
             objectSrc: ["'none'"],
         },
     },
-    crossOriginResourcePolicy: { policy: 'same-origin' }, // Tightened from cross-origin
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows cross-origin asset/QR delivery
     hsts: {
         maxAge: 63072000, // 2 years
         includeSubDomains: true,
@@ -93,17 +108,20 @@ app.use(helmet({
     },
 }));
 
-// ── FIX C-3: CORS — Explicit allowlist instead of origin:true ──
-// origin:true was reflecting any Origin header → defeats HTTP-only cookie security
+// ── CORS — Explicit allowlist + Vercel deployment support ──
 const _rawCorsOrigins = (env.CORS_ORIGIN || '')
     .split(',')
     .map(o => o.trim())
     .filter(Boolean);
 
-// Always allow localhost in development
-if (env.NODE_ENV !== 'production') {
-    _rawCorsOrigins.push('http://localhost:3000', 'http://localhost:3001');
-}
+// Always allow standard production and development domains
+_rawCorsOrigins.push(
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://trucknet-frontend.vercel.app',
+    'https://trucknet-ai.vercel.app',
+    'https://truck-net-ai-web.vercel.app'
+);
 
 const ALLOWED_ORIGINS = new Set<string>(_rawCorsOrigins);
 
@@ -111,16 +129,31 @@ logger.info('CORS allowlist configured', { origins: [...ALLOWED_ORIGINS] });
 
 const corsOptions: CorsOptions = {
     origin: (origin, callback) => {
-        // Allow same-origin requests (no Origin header) and explicitly allowlisted origins
-        if (!origin || ALLOWED_ORIGINS.has(origin)) {
-            callback(null, true);
-        } else {
-            logger.warn('CORS rejected origin', { origin });
-            callback(new Error(`CORS policy: origin '${origin}' is not allowed`));
+        // Allow same-origin requests (no Origin header)
+        if (!origin) {
+            return callback(null, true);
         }
+
+        // Allow listed origins
+        if (ALLOWED_ORIGINS.has(origin)) {
+            return callback(null, true);
+        }
+
+        // Allow any Vercel preview or production deploy for TruckNet
+        try {
+            const parsed = new URL(origin);
+            if (parsed.hostname.endsWith('.vercel.app') || parsed.hostname.endsWith('.onrender.com')) {
+                return callback(null, true);
+            }
+        } catch {
+            // Invalid URL format
+        }
+
+        logger.warn('CORS rejected origin', { origin });
+        callback(null, false);
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
     credentials: true,
     maxAge: 86400, // Cache preflight for 24 hours
 };
@@ -139,6 +172,9 @@ app.use(morgan(env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // FIX: Was 10mb — far too large for JSON API. 100kb handles all legitimate payloads.
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// ── High-Security Incoming Request Sanitizer (NoSQL & Prototype Pollution Defense) ──
+app.use(sanitizeRequest);
 
 // ── Request Timing Logs (Slow Endpoint Detection) ──
 app.use((req, res, next) => {
@@ -177,10 +213,10 @@ app.get('/api/ping', (_req, res) => {
 // IMPORTANT: In-memory only — resets on server restart. Not persistent analytics.
 app.use(trafficMonitorMiddleware);
 
-// ── Global Rate Limiter (100 req / 15 min per IP) ──
+// ── Global Rate Limiter (High-Traffic Configured: 1000 req / 15 min per IP) ──
 const globalLimiter = rateLimiter({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 1000,
     message: 'Too many requests from this IP. Please try again later.',
 });
 app.use(globalLimiter);
@@ -212,6 +248,9 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/dost', dostRoutes);
 app.use('/api/predictive', predictiveRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/trips', tripRoutes);
+app.use('/api/driver-invites', driverInviteRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // ── 404 Handler ──
 app.all('*', (req, _res, next) => {
@@ -251,11 +290,9 @@ const shutdown = async (signal: string) => {
     httpServer.close(async () => {
         logger.info('HTTP server closed');
         try {
-            const mongoose = (await import('mongoose')).default;
-            await mongoose.connection.close();
-            logger.info('Database connection closed');
+            await closeMongoose();
         } catch (err: any) {
-            logger.error('Error closing DB', { error: err.message });
+            logger.error('Error closing DB during shutdown', { error: err.message });
         }
         process.exit(0);
     });

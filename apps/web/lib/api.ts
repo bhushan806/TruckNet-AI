@@ -30,11 +30,34 @@ const api = axios.create({
   timeout: 60_000,
 });
 
+// ── Request Interceptor (Dual-Auth: Cookie + Bearer Fallback) ──
+// Guarantees reliable auth in cross-domain Vercel <-> Render setups where
+// third-party SameSite=None cookies may be blocked by privacy browsers.
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 const aiApi = axios.create({
   baseURL: process.env.NEXT_PUBLIC_AI_ENGINE_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // Send HTTP-only cookies on all requests
   timeout: 60_000,
+});
+
+aiApi.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
 });
 
 // ── Response Interceptors ──
@@ -74,9 +97,27 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {}, { withCredentials: true });
+        const storedRefreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+        const refreshRes = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
+          refreshToken: storedRefreshToken || undefined,
+        }, {
+          withCredentials: true,
+          headers: storedRefreshToken ? { 'x-refresh-token': storedRefreshToken } : {},
+        });
+
+        const newToken = refreshRes.data?.data?.token;
+        if (newToken && typeof window !== 'undefined') {
+          localStorage.setItem('token', newToken);
+          if (refreshRes.data?.data?.refreshToken) {
+            localStorage.setItem('refreshToken', refreshRes.data.data.refreshToken);
+          }
+        }
+
         isRefreshing = false;
         processQueue(null);
+        if (originalRequest.headers && newToken) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        }
         return api(originalRequest);
       } catch (refreshError) {
         isRefreshing = false;

@@ -114,8 +114,9 @@ export class AuthService {
         }
 
         // Constant-time comparison: always compare even if user not found
+        // Cast to string: password is optional in schema (OTP users) but always present for email users
         const passwordMatch = userDoc
-            ? await bcrypt.compare(data.password, userDoc.password)
+            ? await bcrypt.compare(data.password, (userDoc.password as string) || '')
             : await bcrypt.compare(data.password, '$2b$12$invalidhashforconstanttiming000');
 
         if (!userDoc || !passwordMatch) {
@@ -268,6 +269,33 @@ export class AuthService {
         await EmailService.sendPasswordResetEmail(email, rawToken);
 
         logger.info('Password reset token created', { userId: user._id });
+        return { rawToken };
+    }
+
+    // ── Change Password (Authenticated) ──
+    async changePassword(userId: string, currentPassword: string, newPassword: string) {
+        const user = await UserModel.findById(userId).select('+password');
+        if (!user) throw new AppError('User not found', 404);
+
+        if (!user.password) {
+            throw new AppError('Password not set for this account. Please use OTP or reset password.', 400);
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password as string);
+        if (!isMatch) {
+            throw new AppError('Current password is incorrect', 400);
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+        await UserModel.findByIdAndUpdate(userId, {
+            password: hashedPassword,
+        });
+
+        // Revoke all existing sessions for security
+        await RefreshTokenModel.deleteMany({ userId });
+
+        logger.info('User password changed successfully', { userId });
+        return { message: 'Password changed successfully' };
     }
 
     // ── Reset Password ──
@@ -299,4 +327,87 @@ export class AuthService {
         logger.info('Password reset successful', { userId: user._id });
         return { message: 'Password updated successfully' };
     }
+
+    // ── OTP: Send login OTP ──
+    async sendLoginOtp(phone: string) {
+        const otpService = new (await import('./otp.service')).OtpService();
+        await otpService.sendOtp(phone, 'auth');
+        return { message: 'OTP sent successfully' };
+    }
+
+    // ── OTP: Verify OTP and login/register ──
+    async verifyLoginOtp(data: {
+        phone: string;
+        otp: string;
+        name?: string;
+        role?: 'CUSTOMER' | 'DRIVER' | 'OWNER';
+    }) {
+        const otpService = new (await import('./otp.service')).OtpService();
+        const { userId, isNewUser } = await otpService.verifyOtp(data.phone, data.otp);
+
+        if (isNewUser) {
+            // New user — must provide name and role
+            if (!data.name || !data.role) {
+                throw new AppError('Name and role are required for new users', 400);
+            }
+
+            // Complete the placeholder user record
+            await UserModel.findByIdAndUpdate(userId, {
+                $set: {
+                    name: data.name,
+                    role: data.role,
+                    isVerified: true,
+                    isActive: true,
+                },
+            });
+
+            // Create role-specific profile
+            try {
+                if (data.role === 'DRIVER') {
+                    await DriverProfileModel.create({
+                        userId,
+                        licenseNumber: `PENDING-${Date.now()}`,
+                        experienceYears: 0,
+                        rating: 5.0,
+                        totalTrips: 0,
+                    });
+                } else if (data.role === 'OWNER') {
+                    await OwnerProfileModel.create({
+                        userId,
+                        companyName: `${data.name}'s Transport`,
+                    });
+                }
+            } catch (error) {
+                logger.error('Failed to create profile for OTP user', { userId });
+            }
+
+            logger.info('New user registered via OTP', { userId, role: data.role });
+        } else {
+            // Existing user — mark as verified if not already
+            await UserModel.findByIdAndUpdate(userId, {
+                $set: { isVerified: true },
+            });
+        }
+
+        // Generate JWT tokens (same as email/password flow)
+        const accessToken = this.generateAccessToken(userId);
+        const refreshToken = await this.generateRefreshToken(userId);
+
+        // Fetch complete user data
+        const userDoc = await UserModel.findById(userId);
+        if (!userDoc) throw new AppError('User not found after verification', 500);
+
+        const user = {
+            id: userDoc._id.toString(),
+            name: userDoc.name,
+            email: userDoc.email,
+            role: userDoc.role,
+            phone: userDoc.phone,
+            avatar: userDoc.avatar,
+        };
+
+        logger.info('User logged in via OTP', { userId: user.id });
+        return { user, accessToken, refreshToken };
+    }
 }
+

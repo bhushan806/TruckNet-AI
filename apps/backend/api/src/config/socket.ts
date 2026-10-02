@@ -42,19 +42,37 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 export const initSocket = (httpServer: HttpServer) => {
-    // CORS allowlist from environment
+    // Dynamic CORS allowlist aligned with Express app.ts
     const corsOrigins = (env.CORS_ORIGIN || '')
         .split(',')
         .map(o => o.trim())
         .filter(Boolean);
 
-    if (env.NODE_ENV !== 'production') {
-        corsOrigins.push('http://localhost:3000', 'http://localhost:3001');
-    }
+    corsOrigins.push(
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'https://trucknet-frontend.vercel.app',
+        'https://trucknet-ai.vercel.app',
+        'https://truck-net-ai-web.vercel.app'
+    );
+
+    const allowedOriginsSet = new Set(corsOrigins);
 
     io = new Server(httpServer, {
         cors: {
-            origin: corsOrigins,
+            origin: (origin, callback) => {
+                if (!origin) return callback(null, true);
+                if (allowedOriginsSet.has(origin)) return callback(null, true);
+                try {
+                    const parsed = new URL(origin);
+                    if (parsed.hostname.endsWith('.vercel.app') || parsed.hostname.endsWith('.onrender.com')) {
+                        return callback(null, true);
+                    }
+                } catch {
+                    // Invalid URL format
+                }
+                callback(null, false);
+            },
             methods: ['GET', 'POST'],
             credentials: true,
         },
@@ -154,6 +172,16 @@ export const initSocket = (httpServer: HttpServer) => {
             }
             socket.join(rideId);
             logger.debug('User joined ride room', { userId: authenticatedUserId, rideId });
+        });
+
+        // ── Join a specific trip room (validated) ──
+        socket.on('joinTrip', (tripId: string) => {
+            if (!tripId || typeof tripId !== 'string' || tripId.length > 100) {
+                socket.emit('error', { message: 'Invalid tripId' });
+                return;
+            }
+            socket.join(`trip:${tripId}`);
+            logger.debug('User joined trip room', { userId: authenticatedUserId, tripId });
         });
 
         socket.on('disconnect', (reason) => {

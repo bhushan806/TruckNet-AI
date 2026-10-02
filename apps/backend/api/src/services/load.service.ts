@@ -28,14 +28,39 @@ export class LoadService {
         dropLat?: number;
         dropLng?: number;
     }) {
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const randNum = Math.floor(1000 + Math.random() * 9000);
+        const randTrx = Math.random().toString(36).substring(2, 7).toUpperCase();
+        const loadNumber = `LOD-${today}-${randNum}`;
+        const transactionId = `TRX-${today}-${randTrx}`;
+
         const load = await LoadModel.create({
             ...data,
             customerId,
+            loadNumber,
+            transactionId,
             status: 'OPEN',
-            auditTrail: [{ action: 'CREATED', toStatus: 'OPEN', userId: customerId }],
+            auditTrail: [{ action: 'CREATED', toStatus: 'OPEN', userId: customerId, meta: { loadNumber, transactionId } }],
         });
 
         logger.info('Load created', { loadId: load._id, customerId });
+
+        // Real-time broadcast to available fleet owners
+        try {
+            const { getIO } = await import('../config/socket');
+            getIO().emit('load:new', {
+                loadId: load._id.toString(),
+                source: load.source,
+                destination: load.destination,
+                weight: load.weight,
+                goodsType: load.goodsType,
+                price: load.price,
+                createdAt: (load as any).createdAt,
+            });
+        } catch (e: any) {
+            logger.warn('Socket broadcast for new load failed', { error: e.message });
+        }
+
         return load;
     }
 
@@ -97,6 +122,24 @@ export class LoadService {
         }
 
         logger.info('Load accepted', { loadId, ownerId });
+
+        // Emit real-time notification to customer and fleet network
+        try {
+            const { getIO } = await import('../config/socket');
+            getIO().to(load.customerId.toString()).emit('load:accepted', {
+                loadId: load._id.toString(),
+                status: 'ACCEPTED_BY_OWNER',
+                ownerId,
+                message: 'A fleet owner has accepted your load!',
+            });
+            getIO().emit('load:statusChanged', {
+                loadId: load._id.toString(),
+                status: 'ACCEPTED_BY_OWNER',
+            });
+        } catch (e: any) {
+            logger.warn('Socket notification for load acceptance failed', { error: e.message });
+        }
+
         return load;
     }
 
@@ -158,6 +201,30 @@ export class LoadService {
         }
 
         logger.info('Driver assigned to load', { loadId, driverProfileId, ownerId });
+
+        // Emit real-time notification to driver and customer
+        try {
+            const { getIO } = await import('../config/socket');
+            if (driverProfile.userId) {
+                getIO().to(driverProfile.userId.toString()).emit('trip:assigned', {
+                    loadId: load._id.toString(),
+                    source: load.source,
+                    destination: load.destination,
+                    weight: load.weight,
+                    price: load.price,
+                    message: 'New load assigned to you! 🚚',
+                });
+            }
+            getIO().to(load.customerId.toString()).emit('load:driverAssigned', {
+                loadId: load._id.toString(),
+                driverName: (driverProfile as any).userId?.name || 'Assigned Driver',
+                status: 'ASSIGNED_TO_DRIVER',
+                message: 'A driver has been assigned to your shipment!',
+            });
+        } catch (e: any) {
+            logger.warn('Socket notification for driver assignment failed', { error: e.message });
+        }
+
         return load;
     }
 
@@ -234,7 +301,72 @@ export class LoadService {
         }
 
         logger.info('Load status updated', { loadId, from: load.status, to: newStatus, userId });
+
+        // Emit real-time status update to customer and trip room
+        try {
+            const { getIO } = await import('../config/socket');
+            getIO().to(load.customerId.toString()).emit('load:statusChanged', {
+                loadId: load._id.toString(),
+                status: newStatus,
+                message: newStatus === 'IN_TRANSIT' ? 'Your shipment is now in transit! 🚚' : 'Shipment delivered successfully! 🎉',
+            });
+            getIO().to(load._id.toString()).emit('trip:statusUpdated', {
+                loadId: load._id.toString(),
+                status: newStatus,
+            });
+        } catch (e: any) {
+            logger.warn('Socket notification for load status change failed', { error: e.message });
+        }
+
         return updated;
+    }
+
+    // ───────────────────────────────────────
+    //  Fetch single load by ID, loadNumber, or transactionId
+    // ───────────────────────────────────────
+    async getLoadById(identifier: string) {
+        let load = null;
+        if (identifier.length === 24 && /^[0-9a-fA-F]{24}$/.test(identifier)) {
+            load = await LoadModel.findById(identifier)
+                .populate('customerId', 'name phone email isVerified')
+                .populate('ownerId', 'companyName')
+                .populate({
+                    path: 'driverId',
+                    populate: { path: 'userId', select: 'name phone isVerified' }
+                })
+                .lean();
+        }
+
+        if (!load) {
+            load = await LoadModel.findOne({
+                $or: [
+                    { loadNumber: identifier },
+                    { transactionId: identifier },
+                ]
+            })
+                .populate('customerId', 'name phone email isVerified')
+                .populate('ownerId', 'companyName')
+                .populate({
+                    path: 'driverId',
+                    populate: { path: 'userId', select: 'name phone isVerified' }
+                })
+                .lean();
+        }
+
+        if (!load) throw new AppError('Shipment not found with this identifier', 404);
+
+        if (!load.loadNumber || !load.transactionId) {
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const randNum = Math.floor(1000 + Math.random() * 9000);
+            const randTrx = Math.random().toString(36).substring(2, 7).toUpperCase();
+            const updates: any = {};
+            if (!load.loadNumber) updates.loadNumber = `LOD-${today}-${randNum}`;
+            if (!load.transactionId) updates.transactionId = `TRX-${today}-${randTrx}`;
+            await LoadModel.findByIdAndUpdate(load._id, { $set: updates });
+            load = { ...load, ...updates };
+        }
+
+        return load;
     }
 
     // ───────────────────────────────────────

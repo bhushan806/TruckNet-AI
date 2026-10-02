@@ -8,7 +8,7 @@ import { Truck, Activity, Wrench, Bell, Sparkles, Users, Box, Briefcase, FileTex
 import MapComponent from '@/components/map/Map';
 import api from '@/lib/api';
 import Link from 'next/link';
-import { io } from 'socket.io-client';
+import { createSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 
 export default function OwnerDashboard() {
@@ -48,13 +48,8 @@ export default function OwnerDashboard() {
     useEffect(() => {
         fetchVehicles();
 
-        // Socket.io connection — derive base URL from API URL env var
-        const socket = io(process.env.NEXT_PUBLIC_API_URL || '', {
-            auth: { token: localStorage.getItem('token') },
-            transports: ['websocket', 'polling'],
-            reconnectionAttempts: 10,
-            reconnectionDelay: 2000
-        });
+        // Socket.io connection — unified authenticated socket
+        const socket = createSocket();
 
         socket.on('connect', () => {
             console.log('Connected to socket server');
@@ -113,7 +108,7 @@ export default function OwnerDashboard() {
 
                     {/* Notification Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 top-12 w-80 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-[9999] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="absolute right-0 top-12 w-80 glass-card rounded-lg shadow-xl z-[9999] animate-in fade-in zoom-in-95 duration-200">
                             <div className="p-4 border-b border-slate-700 flex justify-between items-center">
                                 <h4 className="font-semibold text-white">Notifications</h4>
                                 <span className="text-xs text-slate-400">{notifications.length} new</span>
@@ -144,7 +139,7 @@ export default function OwnerDashboard() {
                     )}
 
                     <Link href="/dashboard/owner/vehicles/add">
-                        <Button className="bg-blue-600 hover:bg-blue-500 text-white neon-blue border-none">
+                        <Button className="btn-neon border-none">
                             <Plus className="mr-2 h-4 w-4" />
                             Add Vehicle
                         </Button>
@@ -152,20 +147,22 @@ export default function OwnerDashboard() {
                 </div>
             </div>
 
-            {/* Stats Cards - Bento Grid */}
-            <div className="bento-grid">
-                <Card className="glass glass-hover border-none">
+            {/* Stats Cards - Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card className="glass-card border-none hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 blur-3xl rounded-full -mr-10 -mt-10 group-hover:bg-cyan-500/20 transition-colors"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-light text-slate-300">Total Fleet</CardTitle>
                         <Truck className="h-4 w-4 text-slate-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-white">{stats.total}</div>
+                        <div className="text-3xl font-bold text-white text-glow">{stats.total}</div>
                         <p className="text-xs text-slate-400 mt-1">Vehicles in your fleet</p>
+                        <div className="text-xs text-cyan-400 mt-3 flex items-center font-medium"><ArrowUpRight className="h-3 w-3 mr-1" /> +1 added this week</div>
                     </CardContent>
                 </Card>
-                <Card className="glass glass-hover border-none relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 blur-2xl rounded-full -mr-10 -mt-10"></div>
+                <Card className="glass-card border-none hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-3xl rounded-full -mr-10 -mt-10 group-hover:bg-green-500/20 transition-colors"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-light text-slate-300">On Road</CardTitle>
                         <Activity className="h-4 w-4 text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]" />
@@ -173,10 +170,11 @@ export default function OwnerDashboard() {
                     <CardContent>
                         <div className="text-3xl font-bold text-green-400 drop-shadow-[0_0_5px_rgba(74,222,128,0.5)]">{stats.onRoad}</div>
                         <p className="text-xs text-slate-400 mt-1">Currently active trips</p>
+                        <div className="text-xs text-green-400 mt-3 flex items-center font-medium"><ArrowUpRight className="h-3 w-3 mr-1" /> +12% efficiency</div>
                     </CardContent>
                 </Card>
-                <Card className="glass glass-hover border-none relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 blur-2xl rounded-full -mr-10 -mt-10"></div>
+                <Card className="glass-card border-none hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full -mr-10 -mt-10 group-hover:bg-blue-500/20 transition-colors"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-light text-slate-300">Available</CardTitle>
                         <Truck className="h-4 w-4 text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
@@ -184,10 +182,11 @@ export default function OwnerDashboard() {
                     <CardContent>
                         <div className="text-3xl font-bold text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]">{stats.available}</div>
                         <p className="text-xs text-slate-400 mt-1">Ready for assignment</p>
+                        <div className="text-xs text-blue-400 mt-3 flex items-center font-medium">Matching available</div>
                     </CardContent>
                 </Card>
-                <Card className="glass glass-hover border-none relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 blur-2xl rounded-full -mr-10 -mt-10"></div>
+                <Card className="glass-card border-none hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl rounded-full -mr-10 -mt-10 group-hover:bg-orange-500/20 transition-colors"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-light text-slate-300">Maintenance</CardTitle>
                         <Wrench className="h-4 w-4 text-orange-400 drop-shadow-[0_0_8px_rgba(251,146,60,0.5)]" />
@@ -195,6 +194,7 @@ export default function OwnerDashboard() {
                     <CardContent>
                         <div className="text-3xl font-bold text-orange-400 drop-shadow-[0_0_5px_rgba(251,146,60,0.5)]">{stats.maintenance}</div>
                         <p className="text-xs text-slate-400 mt-1">Vehicles in service</p>
+                        <div className="text-xs text-orange-400 mt-3 flex items-center font-medium">1 due next week</div>
                     </CardContent>
                 </Card>
             </div>
@@ -202,7 +202,7 @@ export default function OwnerDashboard() {
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {/* Live Tracking - Spans 2 columns */}
-                <Card className="lg:col-span-2 h-[500px] flex flex-col overflow-hidden border-none glass shadow-2xl">
+                <Card className="lg:col-span-2 h-[500px] flex flex-col overflow-hidden border-none glass-card shadow-2xl relative">
                     <CardHeader className="bg-white/5 border-b border-white/10 backdrop-blur-sm">
                         <CardTitle className="flex items-center gap-2 text-white">
                             <Map className="h-5 w-5 text-blue-400" />
@@ -230,7 +230,7 @@ export default function OwnerDashboard() {
                         <h3 className="font-semibold text-lg px-1 text-white">Quick Actions</h3>
 
                         <Link href="/dashboard/owner/vehicles">
-                            <Card className="glass glass-hover border-none group cursor-pointer">
+                            <Card className="glass-card border-none group cursor-pointer hover:border-blue-500/30 transition-all duration-300">
                                 <CardContent className="p-4 flex items-center gap-4">
                                     <div className="p-3 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
                                         <Truck className="h-6 w-6 text-blue-400 group-hover:text-blue-300" />
@@ -245,7 +245,7 @@ export default function OwnerDashboard() {
                         </Link>
 
                         <Link href="/dashboard/owner/find-drivers">
-                            <Card className="glass glass-hover border-none group cursor-pointer">
+                            <Card className="glass-card border-none group cursor-pointer hover:border-green-500/30 transition-all duration-300">
                                 <CardContent className="p-4 flex items-center gap-4">
                                     <div className="p-3 bg-green-500/20 rounded-xl group-hover:bg-green-500/30 transition-colors">
                                         <Users className="h-6 w-6 text-green-400 group-hover:text-green-300" />
@@ -260,7 +260,7 @@ export default function OwnerDashboard() {
                         </Link>
 
                         <Link href="/dashboard/owner/loads">
-                            <Card className="glass glass-hover border-none group cursor-pointer">
+                            <Card className="glass-card border-none group cursor-pointer hover:border-orange-500/30 transition-all duration-300">
                                 <CardContent className="p-4 flex items-center gap-4">
                                     <div className="p-3 bg-orange-500/20 rounded-xl group-hover:bg-orange-500/30 transition-colors">
                                         <Box className="h-6 w-6 text-orange-400 group-hover:text-orange-300" />
@@ -275,7 +275,7 @@ export default function OwnerDashboard() {
                         </Link>
                     </div>
 
-                    <Card className="bg-gradient-to-br from-blue-600 to-indigo-700 border-none text-white overflow-hidden relative shadow-lg neon-blue">
+                    <Card className="bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#0f172a] border border-indigo-500/30 text-white overflow-hidden relative shadow-[0_0_30px_-5px_rgba(79,70,229,0.3)] hover:shadow-[0_0_40px_-5px_rgba(79,70,229,0.5)] transition-all duration-500">
                         <div className="absolute top-0 right-0 p-4 opacity-20">
                             <Sparkles className="h-24 w-24" />
                         </div>
@@ -291,7 +291,7 @@ export default function OwnerDashboard() {
                         <CardContent>
                             <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="secondary" className="w-full font-semibold text-blue-700 bg-white hover:bg-blue-50">
+                                    <Button className="w-full btn-neon font-semibold border-none">
                                         View Recommendations
                                     </Button>
                                 </DialogTrigger>
