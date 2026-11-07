@@ -25,6 +25,10 @@ services:
           property: url
       - key: REDIS_URL
         sync: false
+      - key: HF_API_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
 
   # AI Engine (Python FastAPI)
   - type: web

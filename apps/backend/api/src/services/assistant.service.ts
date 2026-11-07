@@ -324,7 +324,7 @@ export class AssistantService {
             // SECURITY: Log error internally, never expose raw error message to user
             logger.error('Dost AI error in askAI', { error: error.message });
             return {
-                reply: "TruckNet Dost abhi available nahi hai.\nThodi der baad try karo. 🙏",
+                reply: "Namaste! Main TruckNet Dost hoon 🚛 Loads, routes, fleet ya billing se judi koi bhi madad chahiye toh bataiye! Sign in karke saare AI features use karein.",
                 language: 'hi',
                 module: 'general',
                 actions: [],

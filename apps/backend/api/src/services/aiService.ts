@@ -15,54 +15,67 @@ interface ChatMessage {
 }
 
 export const callGrokAPI = async (messages: ChatMessage[]) => {
-    // Priority 1: Groq Cloud
+    // Priority 1: Groq Cloud (with multi-model fallback)
     if (process.env.GROQ_API_KEY) {
-        try {
-            const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-                model: 'llama-3.3-70b-versatile',
-                messages: messages,
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 30000
-            });
-            if (response.data.choices && response.data.choices.length > 0) {
-                return response.data.choices[0].message.content;
+        const groqModels = [
+            process.env.GROQ_MODEL,
+            'llama-3.3-70b-versatile',
+            'llama-3.1-8b-instant',
+            'mixtral-8x7b-32768',
+            'gemma2-9b-it',
+        ].filter(Boolean) as string[];
+
+        for (const model of groqModels) {
+            try {
+                const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+                    model,
+                    messages: messages,
+                }, {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 20000
+                });
+                if (response.data.choices && response.data.choices.length > 0) {
+                    return response.data.choices[0].message.content;
+                }
+            } catch (error: any) {
+                logger.warn(`Groq model ${model} failed, trying next...`, { error: error.message });
             }
-        } catch (error: any) {
-            logger.warn('Groq failed, falling back...', { error: error.message });
         }
     }
 
-    // Priority 2: HuggingFace
-    try {
-        if (process.env.HF_API_TOKEN) {
-            const hf = new HfInference(process.env.HF_API_TOKEN);
-            const response = await hf.chatCompletion({
-                model: 'Qwen/Qwen2.5-72B-Instruct',
-                messages: messages.map(m => ({
-                    role: m.role,
-                    content: m.content
-                }))
-            });
+    // Priority 2: HuggingFace (free serverless models)
+    if (process.env.HF_API_TOKEN) {
+        const hfModels = [
+            'mistralai/Mistral-7B-Instruct-v0.2',
+            'Qwen/Qwen2.5-7B-Instruct',
+            'meta-llama/Llama-3.2-3B-Instruct',
+            'Qwen/Qwen2.5-72B-Instruct',
+        ];
 
-            if (response.choices && response.choices.length > 0) {
-                return response.choices[0].message.content?.trim() || "No response";
+        const hf = new HfInference(process.env.HF_API_TOKEN);
+        for (const model of hfModels) {
+            try {
+                const response = await hf.chatCompletion({
+                    model,
+                    messages: messages.map(m => ({
+                        role: m.role,
+                        content: m.content
+                    }))
+                });
+
+                if (response.choices && response.choices.length > 0) {
+                    const content = response.choices[0].message.content?.trim();
+                    if (content) return content;
+                }
+            } catch (error: any) {
+                const status = error.response?.status;
+                logger.warn(`HuggingFace model ${model} failed (status: ${status})`, {
+                    message: error.response?.data?.error || error.message
+                });
             }
-        }
-    } catch (error: any) {
-        const status = error.response?.status;
-        if (status === 401) {
-            logger.error('HuggingFace error: HF token invalid or missing');
-        } else if (status === 503) {
-            logger.error('HuggingFace error: HF model loading, retry in 20s');
-        } else {
-            logger.error('HuggingFace API error', {
-                status,
-                message: error.response?.data?.error || error.message
-            });
         }
     }
 
@@ -115,6 +128,40 @@ export const callGrokAPI = async (messages: ChatMessage[]) => {
         }
     }
 
-    // All providers failed — return Hindi fallback message
-    return "TruckNet Dost abhi available nahi hai.\nThodi der baad try karo. 🙏";
+    // All external providers failed — provide intelligent logistics fallback instead of dead error
+    return generateLocalFallback(messages);
 };
+
+function generateLocalFallback(messages: ChatMessage[]): string {
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content?.toLowerCase() || '';
+
+    if (lastUserMsg.includes('start') || lastUserMsg.includes('shuru') || lastUserMsg.includes('help') || lastUserMsg.includes('guide') || lastUserMsg.includes('kya kar')) {
+        return "TruckNet India mein aapka swagat hai! 🚛 Main aapka AI Co-Pilot hoon:\n\n• 📦 **Find Loads / Book Truck**: Maal bhejne ya load lene ke liye\n• 🗺️ **Smart Routing & Fuel**: Kam toll aur kam diesel wala fast route\n• 💰 **Dynamic Price Check**: Live market-based bhada estimate\n• 📍 **Live Tracking**: GPS real-time updates aur delay prediction\n\nAap direct sawal puch sakte hain ya sign in karke start kar sakte hain! 🚀";
+    }
+    if (lastUserMsg.includes('how') || lastUserMsg.includes('kaise') || lastUserMsg.includes('work') || lastUserMsg.includes('feature') || lastUserMsg.includes('demo')) {
+        return "TruckNet AI ek smart logistics platform hai! 🧠 Yeh Indian roads aur trucking ke liye specially design kiya gaya hai:\n\n1. AI Matching: Best load aur truck instantly match karta hai\n2. Delay Predictor: Real-time traffic, toll aur mausam se late hone ka risk batata hai\n3. Dynamic Pricing: Transparent aur fair rates calculate karta hai!\n\nAage badhne ke liye sign in karein ya dashboard visit karein. 🚛";
+    }
+    if (lastUserMsg.includes('driver') || lastUserMsg.includes('performance')) {
+        return "Driver performance track karne ke liye aap Fleet Dashboard > Drivers section mein ja sakte hain. Wahan par safety rating, trips count, on-time delivery rate aur feedback live dekh sakte hain! 🚛📊";
+    }
+    if (lastUserMsg.includes('fleet') || lastUserMsg.includes('idle') || lastUserMsg.includes('truck') || lastUserMsg.includes('gaadi')) {
+        return "Fleet overview aur idle trucks check karne ke liye Dashboard > Fleet tab open karein. Wahan live GPS status aur available vehicles mil jayenge. 🚚📍";
+    }
+    if (lastUserMsg.includes('load') || lastUserMsg.includes('bhada') || lastUserMsg.includes('booking') || lastUserMsg.includes('maal')) {
+        return "Live verified loads check karne ke liye 'Load Board' par jayein. Hamara system aapke route aur truck capacity ke hisab se best loads match karta hai! 📦🚛";
+    }
+    if (lastUserMsg.includes('route') || lastUserMsg.includes('traffic') || lastUserMsg.includes('fuel') || lastUserMsg.includes('rasta')) {
+        return "AI Route Optimizer se toll charges aur traffic analyze karke fuel-efficient route milta hai, jisse trip par 15-20% fuel bachat hoti hai! ⛽🛣️";
+    }
+    if (lastUserMsg.includes('price') || lastUserMsg.includes('rate') || lastUserMsg.includes('cost') || lastUserMsg.includes('paisa')) {
+        return "Hamara Dynamic Pricing Engine distance, diesel rate, aur demand-supply factor analyze karke accurate freight rates suggest karta hai. Load book karte waqt instant estimate milta hai! 💰";
+    }
+    if (lastUserMsg.includes('track') || lastUserMsg.includes('where') || lastUserMsg.includes('kahan') || lastUserMsg.includes('eta')) {
+        return "Live tracking ke liye 'Track Order' par jayein ya booking number enter karein. System GPS aur live delay prediction show karega! 📍";
+    }
+    if (lastUserMsg.includes('hi') || lastUserMsg.includes('hello') || lastUserMsg.includes('namaste') || lastUserMsg.includes('hey')) {
+        return "Namaste! Main TruckNet Dost hoon 🚛 Loads, routes, fleet ya billing se judi koi bhi madad chahiye toh bataiye!";
+    }
+
+    return "TruckNet Dost aapki seva mein hazir hai! 🚛 Loads, live tracking, fair pricing ya driver assistance ke liye batayein, ya sign in karke dashboard check karein.";
+}

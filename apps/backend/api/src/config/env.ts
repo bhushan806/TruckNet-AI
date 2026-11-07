@@ -37,6 +37,9 @@ const envSchema = z.object({
         : z.string().default('http://localhost:3000'),
 
     // ── AI Providers (optional — app falls back gracefully) ──
+    GROQ_API_KEY: z.string().optional(),
+    GROQ_MODEL: z.string().optional(),
+    GEMINI_API_KEY: z.string().optional(),
     OLLAMA_HOST: z.string().optional(),
     HF_API_TOKEN: z.string().optional(),
     AI_ENGINE_URL: z.string().default('http://localhost:8000'),
