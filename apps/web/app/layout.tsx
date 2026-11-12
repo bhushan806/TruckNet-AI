@@ -14,8 +14,31 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: '--font-space' });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://truck-net-ai-web.vercel.app'),
   title: "TruckNet India — Smart Trucking & Logistics Platform",
   description: "Next-Gen Logistics Platform for the Indian transportation market. Connecting Fleet Owners, Drivers, and Transporters.",
+  alternates: {
+    canonical: '/',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  openGraph: {
+    title: "TruckNet India — Smart Trucking & Logistics Platform",
+    description: "Next-Gen Logistics Platform for the Indian transportation market. Connecting Fleet Owners, Drivers, and Transporters.",
+    url: 'https://truck-net-ai-web.vercel.app',
+    siteName: 'TruckNet India',
+    locale: 'en_IN',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
